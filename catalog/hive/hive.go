@@ -22,12 +22,16 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"regexp"
+	"strings"
 	"sync"
 
 	"iter"
 
 	"github.com/apache/iceberg-go"
 	"github.com/apache/iceberg-go/catalog"
+	"github.com/apache/iceberg-go/catalog/internal"
+	"github.com/apache/iceberg-go/io"
 	"github.com/apache/iceberg-go/table"
 	"github.com/beltran/gohive"
 )
@@ -158,7 +162,53 @@ func (h *HiveCatalog) CatalogType() catalog.Type {
 
 // CreateTable creates a new Iceberg table in the Hive catalog.
 func (h *HiveCatalog) CreateTable(ctx context.Context, identifier table.Identifier, schema *iceberg.Schema, opts ...catalog.CreateTableOpt) (*table.Table, error) {
-	return nil, errors.New("not implemented")
+	// Stage the table by creating metadata and writing it to the target
+	// location.  We use the helper from the catalog/internal package to
+	// build the initial metadata structure and choose a metadata location.
+	staged, err := internal.CreateStagedTable(ctx, h.options, func(context.Context, table.Identifier) (iceberg.Properties, error) {
+		// Hive has no namespace properties that affect location, so we
+		// simply return an empty set.
+		return iceberg.Properties{}, nil
+	}, identifier, schema, opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	// Write the metadata file to the filesystem before attempting to
+	// register the table in Hive.  If the connection fails we do not remove
+	// the metadata file – this mirrors the behaviour of other catalog
+	// implementations.
+	fs, err := staged.FS(ctx)
+	if err != nil {
+		return nil, err
+	}
+	wfs, ok := fs.(io.WriteFileIO)
+	if !ok {
+		return nil, errors.New("loaded filesystem IO does not support writing")
+	}
+	if err := internal.WriteTableMetadata(staged.Metadata(), wfs, staged.MetadataLocation()); err != nil {
+		return nil, err
+	}
+
+	// Build the CREATE TABLE statement.  Hive expects Iceberg tables to be
+	// stored using the HiveIcebergStorageHandler and to include the
+	// metadata location in table properties.
+	ns := strings.Join(catalog.NamespaceFromIdent(identifier), ".")
+	tblName := catalog.TableNameFromIdent(identifier)
+	stmt := fmt.Sprintf("CREATE TABLE %s.%s STORED BY 'org.apache.iceberg.mr.hive.HiveIcebergStorageHandler' "+
+		"LOCATION '%s' TBLPROPERTIES('table_type'='ICEBERG','metadata_location'='%s')",
+		ns, tblName, staged.Metadata().Location(), staged.MetadataLocation())
+
+	if err := h.withReconnect(func(conn *gohive.Connection) error {
+		cur := conn.Cursor()
+		defer cur.Close()
+		cur.Exec(ctx, stmt)
+		return cur.Err
+	}); err != nil {
+		return nil, err
+	}
+
+	return staged.Table, nil
 }
 
 // CommitTable commits table changes to the Hive catalog.
@@ -168,22 +218,173 @@ func (h *HiveCatalog) CommitTable(ctx context.Context, tbl *table.Table, require
 
 // ListTables lists tables within a namespace.
 func (h *HiveCatalog) ListTables(ctx context.Context, namespace table.Identifier) iter.Seq2[table.Identifier, error] {
-	return nil
+	// Retrieve all table names for the given namespace using Hive's
+	// SHOW TABLES command.  The result is collected into a slice before
+	// returning an iterator sequence over the identifiers.
+	var tables []table.Identifier
+
+	ns := strings.Join(namespace, ".")
+	query := "SHOW TABLES"
+	if ns != "" {
+		query = fmt.Sprintf("SHOW TABLES IN %s", ns)
+	}
+
+	if err := h.withReconnect(func(conn *gohive.Connection) error {
+		cur := conn.Cursor()
+		defer cur.Close()
+		cur.Exec(ctx, query)
+		if cur.Err != nil {
+			return cur.Err
+		}
+		for {
+			row := cur.RowMap(ctx)
+			if cur.Err != nil {
+				if cur.Err.Error() == "No more rows are left" {
+					cur.Err = nil
+					break
+				}
+				return cur.Err
+			}
+
+			// SHOW TABLES returns a single column with the table
+			// name.  RowMap returns a map with that column name
+			// as the key.  We simply take the first string value.
+			var name string
+			for _, v := range row {
+				if s, ok := v.(string); ok {
+					name = s
+					break
+				}
+			}
+			if name != "" {
+				if ns != "" {
+					ident := append(append(table.Identifier{}, namespace...), name)
+					tables = append(tables, ident)
+				} else {
+					tables = append(tables, table.Identifier{name})
+				}
+			}
+		}
+		return nil
+	}); err != nil {
+		return func(yield func(table.Identifier, error) bool) {
+			yield(table.Identifier{}, err)
+		}
+	}
+
+	return func(yield func(table.Identifier, error) bool) {
+		for _, t := range tables {
+			if !yield(t, nil) {
+				return
+			}
+		}
+	}
 }
 
 // LoadTable loads a table from the Hive catalog.
 func (h *HiveCatalog) LoadTable(ctx context.Context, identifier table.Identifier, props iceberg.Properties) (*table.Table, error) {
-	return nil, errors.New("not implemented")
+	if props == nil {
+		props = iceberg.Properties{}
+	}
+
+	ns := strings.Join(catalog.NamespaceFromIdent(identifier), ".")
+	tblName := catalog.TableNameFromIdent(identifier)
+
+	var metadataLocation string
+
+	// Extract the metadata location from the CREATE TABLE statement using
+	// SHOW CREATE TABLE.  This avoids having to parse the verbose output of
+	// DESCRIBE FORMATTED.
+	err := h.withReconnect(func(conn *gohive.Connection) error {
+		cur := conn.Cursor()
+		defer cur.Close()
+		cur.Exec(ctx, fmt.Sprintf("SHOW CREATE TABLE %s.%s", ns, tblName))
+		if cur.Err != nil {
+			return cur.Err
+		}
+
+		var ddl strings.Builder
+		for {
+			row := cur.RowMap(ctx)
+			if cur.Err != nil {
+				if cur.Err.Error() == "No more rows are left" {
+					cur.Err = nil
+					break
+				}
+				return cur.Err
+			}
+			for _, v := range row {
+				if s, ok := v.(string); ok {
+					ddl.WriteString(s)
+					ddl.WriteByte('\n')
+				}
+			}
+		}
+
+		// Metadata location is stored in the table properties as
+		// 'metadata_location'.  We use a regular expression to pull the
+		// value from the CREATE TABLE statement.
+		re := regexp.MustCompile(`'metadata_location'='([^']+)'`)
+		matches := re.FindStringSubmatch(ddl.String())
+		if len(matches) == 2 {
+			metadataLocation = matches[1]
+			return nil
+		}
+
+		// As a fallback, try to extract the LOCATION clause and assume
+		// the metadata file resides under the table location.
+		reLoc := regexp.MustCompile(`LOCATION\s+'([^']+)'`)
+		locMatch := reLoc.FindStringSubmatch(ddl.String())
+		if len(locMatch) != 2 {
+			return fmt.Errorf("metadata location not found for %s.%s", ns, tblName)
+		}
+		metadataLocation = locMatch[1]
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	tbl, err := table.NewFromLocation(ctx, identifier, metadataLocation, io.LoadFSFunc(props, metadataLocation), h)
+	if err != nil {
+		return nil, err
+	}
+	return tbl, nil
 }
 
 // DropTable drops a table from the Hive catalog.
 func (h *HiveCatalog) DropTable(ctx context.Context, identifier table.Identifier) error {
-	return errors.New("not implemented")
+	ns := strings.Join(catalog.NamespaceFromIdent(identifier), ".")
+	tblName := catalog.TableNameFromIdent(identifier)
+	stmt := fmt.Sprintf("DROP TABLE IF EXISTS %s.%s", ns, tblName)
+
+	return h.withReconnect(func(conn *gohive.Connection) error {
+		cur := conn.Cursor()
+		defer cur.Close()
+		cur.Exec(ctx, stmt)
+		return cur.Err
+	})
 }
 
 // RenameTable renames an existing table in the Hive catalog.
 func (h *HiveCatalog) RenameTable(ctx context.Context, from, to table.Identifier) (*table.Table, error) {
-	return nil, errors.New("not implemented")
+	fromNs := strings.Join(catalog.NamespaceFromIdent(from), ".")
+	fromTbl := catalog.TableNameFromIdent(from)
+	toNs := strings.Join(catalog.NamespaceFromIdent(to), ".")
+	toTbl := catalog.TableNameFromIdent(to)
+
+	stmt := fmt.Sprintf("ALTER TABLE %s.%s RENAME TO %s.%s", fromNs, fromTbl, toNs, toTbl)
+
+	if err := h.withReconnect(func(conn *gohive.Connection) error {
+		cur := conn.Cursor()
+		defer cur.Close()
+		cur.Exec(ctx, stmt)
+		return cur.Err
+	}); err != nil {
+		return nil, err
+	}
+
+	return h.LoadTable(ctx, to, nil)
 }
 
 // CheckTableExists checks whether a table exists in the Hive catalog.
@@ -193,17 +394,69 @@ func (h *HiveCatalog) CheckTableExists(ctx context.Context, identifier table.Ide
 
 // ListNamespaces lists namespaces, optionally filtered by a parent namespace.
 func (h *HiveCatalog) ListNamespaces(ctx context.Context, parent table.Identifier) ([]table.Identifier, error) {
-	return nil, errors.New("not implemented")
+	if len(parent) > 0 {
+		// Hive does not support nested namespaces.  If a parent is
+		// provided we simply return an empty list.
+		return []table.Identifier{}, nil
+	}
+
+	var namespaces []table.Identifier
+
+	if err := h.withReconnect(func(conn *gohive.Connection) error {
+		cur := conn.Cursor()
+		defer cur.Close()
+		cur.Exec(ctx, "SHOW DATABASES")
+		if cur.Err != nil {
+			return cur.Err
+		}
+		for {
+			row := cur.RowMap(ctx)
+			if cur.Err != nil {
+				if cur.Err.Error() == "No more rows are left" {
+					cur.Err = nil
+					break
+				}
+				return cur.Err
+			}
+			for _, v := range row {
+				if s, ok := v.(string); ok {
+					namespaces = append(namespaces, table.Identifier{s})
+					break
+				}
+			}
+		}
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	return namespaces, nil
 }
 
 // CreateNamespace creates a new namespace in the Hive catalog.
 func (h *HiveCatalog) CreateNamespace(ctx context.Context, namespace table.Identifier, props iceberg.Properties) error {
-	return errors.New("not implemented")
+	ns := strings.Join(namespace, ".")
+	stmt := fmt.Sprintf("CREATE DATABASE %s", ns)
+
+	return h.withReconnect(func(conn *gohive.Connection) error {
+		cur := conn.Cursor()
+		defer cur.Close()
+		cur.Exec(ctx, stmt)
+		return cur.Err
+	})
 }
 
 // DropNamespace drops a namespace from the Hive catalog.
 func (h *HiveCatalog) DropNamespace(ctx context.Context, namespace table.Identifier) error {
-	return errors.New("not implemented")
+	ns := strings.Join(namespace, ".")
+	stmt := fmt.Sprintf("DROP DATABASE IF EXISTS %s", ns)
+
+	return h.withReconnect(func(conn *gohive.Connection) error {
+		cur := conn.Cursor()
+		defer cur.Close()
+		cur.Exec(ctx, stmt)
+		return cur.Err
+	})
 }
 
 // CheckNamespaceExists checks whether a namespace exists in the Hive catalog.
