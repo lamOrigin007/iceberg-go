@@ -19,7 +19,10 @@ package hive
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
+	"fmt"
+	"sync"
 
 	"iter"
 
@@ -39,6 +42,111 @@ type HiveCatalog struct {
 
 	// gohive client used to communicate with the metastore.
 	client *gohive.Connection
+
+	// config keeps the connection details to allow automatic reconnection.
+	cfg Config
+
+	// mu guards client reconnection.
+	mu sync.Mutex
+}
+
+// Config holds connection parameters for the Hive metastore.
+// Only a subset of gohive.ConnectConfiguration options are exposed here for
+// simplicity. Users needing more control can modify the returned configuration
+// before calling NewHiveCatalog.
+type Config struct {
+	Host     string
+	Port     int
+	Username string
+	Password string
+	// Auth mechanism used when connecting to HiveServer2 (e.g. "KERBEROS", "NONE").
+	Auth string
+	// Service is used by Kerberos authentication.
+	Service string
+	// Database selected after connection. Defaults to "default" when empty.
+	Database string
+	// Optional TLS configuration for HTTPS transport.
+	TLSConfig *tls.Config
+}
+
+func (c Config) connectConfiguration() *gohive.ConnectConfiguration {
+	cfg := gohive.NewConnectConfiguration()
+	cfg.Username = c.Username
+	cfg.Password = c.Password
+	cfg.Service = c.Service
+	cfg.Database = c.Database
+	cfg.TLSConfig = c.TLSConfig
+	return cfg
+}
+
+// NewHiveCatalog creates a HiveCatalog and establishes a connection to the Hive
+// metastore using the provided configuration. The active gohive client is stored
+// in the catalog and automatically re-established if the connection is lost.
+func NewHiveCatalog(conf Config, opts iceberg.Properties) (*HiveCatalog, error) {
+	conn, err := gohive.Connect(conf.Host, conf.Port, conf.Auth, conf.connectConfiguration())
+	if err != nil {
+		return nil, fmt.Errorf("connect to hive metastore: %w", err)
+	}
+
+	return &HiveCatalog{
+		metastoreURI: fmt.Sprintf("%s:%d", conf.Host, conf.Port),
+		options:      opts,
+		client:       conn,
+		cfg:          conf,
+	}, nil
+}
+
+// ensureConnection checks if the client is initialized and attempts to
+// reconnect when necessary.
+func (h *HiveCatalog) ensureConnection() error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if h.client != nil {
+		return nil
+	}
+
+	conn, err := gohive.Connect(h.cfg.Host, h.cfg.Port, h.cfg.Auth, h.cfg.connectConfiguration())
+	if err != nil {
+		return err
+	}
+	h.client = conn
+	return nil
+}
+
+// withReconnect executes fn using the active gohive client. If the operation
+// fails, the connection is reset and the operation retried once.
+func (h *HiveCatalog) withReconnect(fn func(*gohive.Connection) error) error {
+	if err := h.ensureConnection(); err != nil {
+		return err
+	}
+
+	if err := fn(h.client); err != nil {
+		h.mu.Lock()
+		if h.client != nil {
+			_ = h.client.Close()
+			h.client = nil
+		}
+		h.mu.Unlock()
+
+		if errConn := h.ensureConnection(); errConn != nil {
+			return errConn
+		}
+
+		return fn(h.client)
+	}
+
+	return nil
+}
+
+// Ping verifies the connection to Hive is still alive. If the connection was
+// dropped, Ping attempts to automatically reconnect.
+func (h *HiveCatalog) Ping(ctx context.Context) error {
+	return h.withReconnect(func(conn *gohive.Connection) error {
+		cursor := conn.Cursor()
+		defer cursor.Close()
+		cursor.Exec(ctx, "SELECT 1")
+		return cursor.Err
+	})
 }
 
 var _ catalog.Catalog = (*HiveCatalog)(nil)
