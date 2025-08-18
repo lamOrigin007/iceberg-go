@@ -2,12 +2,16 @@ package io
 
 import (
 	"errors"
+	"fmt"
 	"io/fs"
 	"net/url"
 	"strconv"
 	"strings"
 
 	hdfs "github.com/colinmarc/hdfs/v2"
+	krb "github.com/jcmturner/gokrb5/v8/client"
+	krbconfig "github.com/jcmturner/gokrb5/v8/config"
+	krbkeytab "github.com/jcmturner/gokrb5/v8/keytab"
 )
 
 // Constants for HDFS configuration options
@@ -15,6 +19,9 @@ const (
 	HDFSNameNode            = "hdfs.namenode"
 	HDFSUser                = "hdfs.user"
 	HDFSUseDatanodeHostname = "hdfs.use-datanode-hostname"
+	HDFSKerberosPrincipal   = "hdfs.kerberos.principal"
+	HDFSKerberosKrb5Conf    = "hdfs.kerberos.krb5-conf"
+	HDFSKerberosKeytab      = "hdfs.kerberos.keytab"
 )
 
 // HdfsFS is an implementation of IO backed by an HDFS cluster.
@@ -82,9 +89,36 @@ func createHDFSFS(parsed *url.URL, props map[string]string) (IO, error) {
 			opts.UseDatanodeHostname = b
 		}
 	}
+
+	if principal := props[HDFSKerberosPrincipal]; principal != "" {
+		confPath := props[HDFSKerberosKrb5Conf]
+		keytabPath := props[HDFSKerberosKeytab]
+		if confPath == "" || keytabPath == "" {
+			return nil, errors.New("kerberos configuration requires krb5-conf and keytab")
+		}
+		kt, err := krbkeytab.Load(keytabPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load kerberos keytab: %w", err)
+		}
+		cfg, err := krbconfig.Load(confPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load krb5 config: %w", err)
+		}
+		parts := strings.Split(principal, "@")
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("invalid kerberos principal: %s", principal)
+		}
+		client := krb.NewWithKeytab(parts[0], parts[1], kt, cfg)
+		if err := client.Login(); err != nil {
+			return nil, fmt.Errorf("kerberos login failed: %w", err)
+		}
+		opts.KerberosClient = client
+		opts.KerberosServicePrincipleName = "nn/_HOST"
+	}
+
 	client, err := hdfs.NewClient(opts)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to connect to HDFS: %w", err)
 	}
 	return &HdfsFS{client: client}, nil
 }
