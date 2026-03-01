@@ -1,0 +1,233 @@
+syntax = "proto3";
+
+package dynamicfilter;
+
+option go_package = "github.com/apache/iceberg-go/dynamicfilter/proto";
+
+// DynamicFilterService предоставляет RPC методы для управления динамическими фильтрами
+// в распределённой среде Greenplum FDW
+service DynamicFilterService {
+    // Управление сессиями запросов
+    rpc StartQuery(StartQueryRequest) returns (StartQueryResponse);
+    rpc StopQuery(StopQueryRequest) returns (StopQueryResponse);
+    rpc QueryStatus(QueryStatusRequest) returns (QueryStatusResponse);
+    
+    // Сбор значений от source таблиц (streaming для эффективности)
+    rpc CollectValues(stream CollectValueRequest) returns (CollectValueResponse);
+    
+    // Получение фильтров для target таблиц
+    rpc GetFilter(GetFilterRequest) returns (GetFilterResponse);
+    rpc WaitForFilter(WaitForFilterRequest) returns (WaitForFilterResponse);
+    
+    // Синхронизация сегментов
+    rpc RegisterSegment(RegisterSegmentRequest) returns (RegisterSegmentResponse);
+    rpc SignalSourceComplete(SignalSourceCompleteRequest) returns (SignalSourceCompleteResponse);
+}
+
+// ============================================================================
+// Запросы управления сессиями
+// ============================================================================
+
+message StartQueryRequest {
+    string query_id = 1;                    // Уникальный ID запроса
+    string session_id = 2;                  // Уникальный ID сегмента/сессии
+    repeated FieldMapping mappings = 3;     // Маппинг полей source->target
+    int32 total_segments = 4;               // Общее количество сегментов в запросе
+    int64 timeout_ms = 5;                   // Таймаут сессии в миллисекундах
+}
+
+message StartQueryResponse {
+    bool success = 1;
+    string error_message = 2;
+}
+
+message StopQueryRequest {
+    string query_id = 1;
+    string session_id = 2;
+}
+
+message StopQueryResponse {
+    bool success = 1;
+    string error_message = 2;
+}
+
+message QueryStatusRequest {
+    string query_id = 1;
+    string session_id = 2;
+}
+
+message QueryStatusResponse {
+    string query_id = 1;
+    SessionStatus status = 2;
+    int32 registered_segments = 3;
+    int32 completed_sources = 4;
+    int32 ready_targets = 5;
+}
+
+enum SessionStatus {
+    SESSION_STATUS_UNSPECIFIED = 0;
+    SESSION_STATUS_ACTIVE = 1;
+    SESSION_STATUS_COLLECTING = 2;
+    SESSION_STATUS_READY = 3;
+    SESSION_STATUS_COMPLETED = 4;
+    SESSION_STATUS_EXPIRED = 5;
+    SESSION_STATUS_ERROR = 6;
+}
+
+// ============================================================================
+// Маппинг полей
+// ============================================================================
+
+message FieldMapping {
+    string target_alias = 1;                // Алиас target таблицы
+    string target_field = 2;                // Имя поля target таблицы
+    string source_alias = 3;                // Алиас source таблицы
+    string source_field = 4;                // Имя поля source таблицы
+    int32 source_field_id = 5;              // Iceberg field ID source
+    int32 target_field_id = 6;              // Iceberg field ID target
+    string field_type = 7;                  // Iceberg type name (int32, string, etc.)
+}
+
+// ============================================================================
+// Сбор значений от source таблиц
+// ============================================================================
+
+message CollectValueRequest {
+    string query_id = 1;
+    string session_id = 2;
+    string source_alias = 3;
+    int32 field_id = 4;
+    repeated Literal values = 5;            // Пакет значений
+    bool is_final = 6;                      // true если это последний пакет
+    int64 sequence_num = 7;                 // Номер пакета для упорядочивания
+}
+
+message CollectValueResponse {
+    bool success = 1;
+    string error_message = 2;
+    int64 total_values_received = 3;        // Общее количество полученных значений
+}
+
+message SignalSourceCompleteRequest {
+    string query_id = 1;
+    string session_id = 2;
+    string source_alias = 3;
+    int32 field_id = 4;
+}
+
+message SignalSourceCompleteResponse {
+    bool success = 1;
+    string error_message = 2;
+    bool filter_ready = 3;                  // true если фильтр готов для target
+}
+
+// ============================================================================
+// Получение фильтров для target таблиц
+// ============================================================================
+
+message GetFilterRequest {
+    string query_id = 1;
+    string session_id = 2;
+    string target_alias = 3;
+    int32 field_id = 4;
+}
+
+message GetFilterResponse {
+    bool is_ready = 1;                      // Готов ли фильтр
+    DynamicFilter filter = 2;               // Фильтр (если готов)
+    string error_message = 3;
+}
+
+message WaitForFilterRequest {
+    string query_id = 1;
+    string session_id = 2;
+    string target_alias = 3;
+    int32 field_id = 4;
+    int64 timeout_ms = 5;                   // Максимальное время ожидания
+}
+
+message WaitForFilterResponse {
+    bool is_ready = 1;
+    DynamicFilter filter = 2;
+    string error_message = 3;
+    bool timed_out = 4;                     // true если истёк таймаут
+}
+
+// ============================================================================
+// Структуры фильтров
+// ============================================================================
+
+message DynamicFilter {
+    int32 field_id = 1;                     // Target field ID
+    string field_type = 2;                  // Iceberg type name
+    FilterType filter_type = 3;             // Тип фильтра (IN или BETWEEN)
+    repeated Literal in_values = 4;         // Значения для IN фильтра
+    repeated ValueRange ranges = 5;         // Диапазоны для BETWEEN фильтра
+    int64 total_values = 6;                 // Общее количество собранных значений
+    int64 build_timestamp_ms = 7;           // Время построения фильтра
+}
+
+enum FilterType {
+    FILTER_TYPE_UNSPECIFIED = 0;
+    FILTER_TYPE_IN = 1;                     // IN предикат
+    FILTER_TYPE_BETWEEN = 2;                // BETWEEN предикаты (OR)
+}
+
+message ValueRange {
+    Literal lower = 1;                      // Нижняя граница
+    Literal upper = 2;                      // Верхняя граница
+    bool lower_inclusive = 3;               // Нижняя граница включительна
+    bool upper_inclusive = 4;               // Верхняя граница включительна
+}
+
+// ============================================================================
+// Литералы значений
+// ============================================================================
+
+message Literal {
+    oneof value {
+        // Примитивные типы
+        bool bool_value = 1;
+        int32 int32_value = 2;
+        int64 int64_value = 3;
+        float float32_value = 4;
+        double float64_value = 5;
+        
+        // Строковые и бинарные
+        string string_value = 6;
+        bytes bytes_value = 7;
+        
+        // Временные типы (хранятся как int64)
+        int64 date_value = 8;               // Дней с epoch
+        int64 time_value = 9;               // Микросекунды с начала дня
+        int64 timestamp_value = 10;         // Микросекунд с epoch
+        
+        // Decimal (строковое представление)
+        string decimal_value = 11;
+        
+        // UUID
+        string uuid_value = 12;
+        
+        // Fixed (байтовый массив с длиной)
+        bytes fixed_value = 13;
+    }
+}
+
+// ============================================================================
+// Регистрация сегментов
+// ============================================================================
+
+message RegisterSegmentRequest {
+    string query_id = 1;
+    string session_id = 2;
+    string segment_host = 3;                // Хост сегмента
+    int32 segment_port = 4;                 // Порт сегмента
+    repeated string source_aliases = 5;     // Алиасы source таблиц на этом сегменте
+    repeated string target_aliases = 6;     // Алиасы target таблиц на этом сегменте
+}
+
+message RegisterSegmentResponse {
+    bool success = 1;
+    string error_message = 2;
+    int32 total_registered = 3;             // Общее количество зарегистрированных сегментов
+}
