@@ -222,6 +222,9 @@ type arrowScan struct {
 	concurrency   int
 
 	nameMapping iceberg.NameMapping
+	
+	// valueCollector для сбора значений из RecordBatch
+	valueCollector ValueCollector
 }
 
 func (as *arrowScan) projectedFieldIDs() (set[int], error) {
@@ -365,6 +368,13 @@ func (as *arrowScan) processRecords(
 		prev = recRdr.RecordBatch()
 		prev.Retain()
 
+		// Вызов valueCollector для сбора значений (если установлен)
+		if as.valueCollector != nil {
+			if err := as.valueCollector.Collect(prev); err != nil {
+				return err
+			}
+		}
+
 		for _, f := range pipeline {
 			prev, err = f(prev)
 			if err != nil {
@@ -450,6 +460,13 @@ func (as *arrowScan) recordsFromTask(ctx context.Context, task internal.Enumerat
 	})
 
 	err = as.processRecords(ctx, task, iceSchema, rdr, colIndices, pipeline, out)
+
+	// Вызов Finalize после завершения обработки (если это последний task)
+	if err == nil && as.valueCollector != nil && task.Last {
+		if err := as.valueCollector.Finalize(); err != nil {
+			return err
+		}
+	}
 
 	return err
 }

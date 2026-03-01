@@ -165,6 +165,10 @@ type Scan struct {
 
 	partitionFilters *keyDefaultMap[int, iceberg.BooleanExpression]
 	concurrency      int
+	
+	// valueCollector используется для сбора значений из RecordBatch во время сканирования
+	// (например, для динамических фильтров в FDW)
+	valueCollector ValueCollector
 }
 
 func (scan *Scan) UseRowLimit(n int64) *Scan {
@@ -465,6 +469,20 @@ type FileScanTask struct {
 	Start, Length int64
 }
 
+// ValueCollector определяет интерфейс для сбора значений из RecordBatch во время сканирования.
+// Это используется для динамических фильтров в FDW, где значения из одной таблицы
+// (source) собираются и передаются через координатор для фильтрации другой таблицы (target).
+type ValueCollector interface {
+	// Collect вызывается для каждого RecordBatch во время сканирования.
+	// Реализация должна извлекать нужные значения и буферизировать/отправлять их.
+	Collect(batch arrow.RecordBatch) error
+
+	// Finalize вызывается после завершения сканирования всех записей.
+	// Реализация должна отправить оставшиеся буферизированные значения
+	// и сигнализировать о завершении сбора.
+	Finalize() error
+}
+
 // ToArrowRecords returns the arrow schema of the expected records and an interator
 // that can be used with a range expression to read the records as they are available.
 // If an error is encountered, during the planning and setup then this will return the
@@ -506,6 +524,7 @@ func (scan *Scan) ToArrowRecords(ctx context.Context) (*arrow.Schema, iter.Seq2[
 		rowLimit:        scan.limit,
 		options:         scan.options,
 		concurrency:     scan.concurrency,
+		valueCollector:  scan.valueCollector,
 	}).GetRecords(ctx, tasks)
 }
 

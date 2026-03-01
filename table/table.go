@@ -354,6 +354,19 @@ func WithOptions(opts iceberg.Properties) ScanOption {
 	}
 }
 
+// WithValueCollector устанавливает коллектор значений для сбора данных во время сканирования.
+// Это используется для динамических фильтров в FDW, где значения из source таблиц
+// собираются и передаются через координатор для фильтрации target таблиц.
+func WithValueCollector(collector ValueCollector) ScanOption {
+	if collector == nil {
+		return noopOption
+	}
+
+	return func(scan *Scan) {
+		scan.valueCollector = collector
+	}
+}
+
 func (t Table) Scan(opts ...ScanOption) *Scan {
 	s := &Scan{
 		metadata:       t.metadata,
