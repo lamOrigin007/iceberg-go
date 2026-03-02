@@ -50,6 +50,12 @@ type ScanFilterApplier struct {
 
 	// appliedFilters - примененные фильтры по fieldID
 	appliedFilters map[int]*types.DynamicFilter
+	
+	// filtersWaited - флаг что фильтры уже ожиданы
+	filtersWaited bool
+	
+	// fieldNames - имена полей для построения выражений
+	fieldNames map[int]string
 }
 
 // ScanFilterApplierConfig конфигурация для ScanFilterApplier
@@ -59,6 +65,7 @@ type ScanFilterApplierConfig struct {
 	TargetAlias string
 	FieldIDs    []int
 	FieldTypes  map[int]iceberg.Type
+	FieldNames  map[int]string // fieldID -> fieldName
 	Timeout     time.Duration
 }
 
@@ -67,6 +74,12 @@ func NewScanFilterApplier(cfg ScanFilterApplierConfig, dfClient *client.Client) 
 	timeout := cfg.Timeout
 	if timeout == 0 {
 		timeout = types.DefaultWaitTimeout
+	}
+
+	// Создаем маппинг fieldID -> fieldName
+	fieldNames := make(map[int]string)
+	for _, fieldID := range cfg.FieldIDs {
+		fieldNames[fieldID] = cfg.FieldNames[fieldID]
 	}
 
 	return &ScanFilterApplier{
@@ -78,12 +91,83 @@ func NewScanFilterApplier(cfg ScanFilterApplierConfig, dfClient *client.Client) 
 		fieldTypes:     cfg.FieldTypes,
 		timeout:        timeout,
 		appliedFilters: make(map[int]*types.DynamicFilter),
+		fieldNames:     fieldNames,
 	}
 }
 
 // WaitForFilters ожидает готовности фильтров для всех полей.
+// Реализация table.FilterProvider интерфейса.
+func (a *ScanFilterApplier) WaitForFilters(ctx context.Context, timeout time.Duration) bool {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	// Если уже ожидано - возвращаем true
+	if a.filtersWaited {
+		return true
+	}
+
+	// Создаем контекст с таймаутом
+	waitCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	// Ожидаем фильтры для всех полей
+	for _, fieldID := range a.fieldIDs {
+		filter, err := a.client.WaitForFilter(waitCtx, a.targetAlias, fieldID, timeout)
+		if err != nil {
+			// Таймаут или ошибка - возвращаем false
+			a.filtersWaited = true
+			return false
+		}
+		if filter != nil {
+			a.appliedFilters[fieldID] = filter
+		}
+	}
+
+	a.filtersWaited = true
+	return true
+}
+
+// GetFilter возвращает построенный BooleanExpression из собранных фильтров.
+// Реализация table.FilterProvider интерфейса.
+func (a *ScanFilterApplier) GetFilter() iceberg.BooleanExpression {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+
+	var predicates []iceberg.BooleanExpression
+
+	for fieldID, filter := range a.appliedFilters {
+		if filter == nil {
+			continue
+		}
+
+		// Получаем имя поля
+		fieldName := a.fieldNames[fieldID]
+		if fieldName == "" {
+			continue
+		}
+
+		fieldRef := iceberg.Reference(fieldName)
+		expr := filter.BuildExpression(fieldRef)
+		if expr != nil && !expr.Equals(iceberg.AlwaysTrue{}) {
+			predicates = append(predicates, expr)
+		}
+	}
+
+	if len(predicates) == 0 {
+		return iceberg.AlwaysTrue{}
+	}
+
+	if len(predicates) == 1 {
+		return predicates[0]
+	}
+
+	return iceberg.NewOr(predicates[0], predicates[1], predicates[2:]...)
+}
+
+// WaitForFiltersLegacy ожидает готовности фильтров для всех полей.
+// Устаревший метод, используйте WaitForFilters(ctx, timeout) bool.
 // Должен вызываться перед началом сканирования target таблицы.
-func (a *ScanFilterApplier) WaitForFilters(ctx context.Context) error {
+func (a *ScanFilterApplier) WaitForFiltersLegacy(ctx context.Context) error {
 	for _, fieldID := range a.fieldIDs {
 		filter, err := a.WaitForFilter(ctx, fieldID)
 		if err != nil {
@@ -120,8 +204,8 @@ func (a *ScanFilterApplier) WaitForFilter(ctx context.Context, fieldID int) (*ty
 	return filter, nil
 }
 
-// GetFilter возвращает ранее полученный фильтр для поля (не блокируется).
-func (a *ScanFilterApplier) GetFilter(fieldID int) *types.DynamicFilter {
+// GetFilterForField возвращает ранее полученный фильтр для поля (не блокируется).
+func (a *ScanFilterApplier) GetFilterForField(fieldID int) *types.DynamicFilter {
 	a.mu.RLock()
 	defer a.mu.RUnlock()
 	return a.appliedFilters[fieldID]

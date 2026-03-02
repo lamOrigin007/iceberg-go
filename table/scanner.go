@@ -25,6 +25,7 @@ import (
 	"iter"
 	"slices"
 	"sync"
+	"time"
 
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
@@ -169,6 +170,10 @@ type Scan struct {
 	// valueCollector используется для сбора значений из RecordBatch во время сканирования
 	// (например, для динамических фильтров в FDW)
 	valueCollector ValueCollector
+	
+	// filterProvider используется для ожидания динамических фильтров перед сканированием
+	filterProvider FilterProvider
+	filterTimeout  time.Duration
 }
 
 func (scan *Scan) UseRowLimit(n int64) *Scan {
@@ -483,6 +488,21 @@ type ValueCollector interface {
 	Finalize() error
 }
 
+// FilterProvider определяет интерфейс для ожидания и предоставления динамических фильтров.
+// Реализации этого интерфейса могут ожидать готовности фильтров от координатора
+// с заданным таймаутом перед началом сканирования.
+type FilterProvider interface {
+	// WaitForFilters ожидает готовности фильтров с указанным таймаутом.
+	// Возвращает true если фильтры готовы к применению, false если таймаут или ошибка.
+	// Контекст используется для отмены операции.
+	WaitForFilters(ctx context.Context, timeout time.Duration) bool
+
+	// GetFilter возвращает построенный BooleanExpression из собранных фильтров.
+	// Должен вызываться после успешного WaitForFilters().
+	// Возвращает AlwaysTrue() если фильтры не готовы или не установлены.
+	GetFilter() iceberg.BooleanExpression
+}
+
 // ToArrowRecords returns the arrow schema of the expected records and an interator
 // that can be used with a range expression to read the records as they are available.
 // If an error is encountered, during the planning and setup then this will return the
@@ -492,7 +512,39 @@ type ValueCollector interface {
 // The purpose for returning the schema up front is to handle the case where there are no
 // rows returned. The resulting Arrow Schema of the projection will still be known.
 func (scan *Scan) ToArrowRecords(ctx context.Context) (*arrow.Schema, iter.Seq2[arrow.RecordBatch, error], error) {
-	tasks, err := scan.PlanFiles(ctx)
+	var tasks []FileScanTask
+	var err error
+	
+	// Ожидание динамических фильтров если filterProvider установлен
+	if scan.filterProvider != nil {
+		timeout := scan.filterTimeout
+		if timeout == 0 {
+			timeout = 30 * time.Second // default timeout
+		}
+		
+		waitCtx, cancel := context.WithTimeout(ctx, timeout)
+		defer cancel()
+		
+		if scan.filterProvider.WaitForFilters(waitCtx, timeout) {
+			// Фильтры готовы - применяем их
+			additionalFilter := scan.filterProvider.GetFilter()
+			if additionalFilter != nil && !additionalFilter.Equals(iceberg.AlwaysTrue{}) {
+				// Объединяем с существующим rowFilter
+				if scan.rowFilter != nil && !scan.rowFilter.Equals(iceberg.AlwaysTrue{}) {
+					scan.rowFilter = iceberg.NewAnd(scan.rowFilter, additionalFilter)
+				} else {
+					scan.rowFilter = additionalFilter
+				}
+				
+				// Пересоздаем partition filters с новым фильтром
+				scan.partitionFilters = newKeyDefaultMapWrapErr(scan.buildPartitionProjection)
+			}
+		}
+		// Если таймаут или ошибка - продолжаем без дополнительного фильтра
+	}
+	
+	// Планирование файлов с учетом всех фильтров
+	tasks, err = scan.PlanFiles(ctx)
 	if err != nil {
 		return nil, nil, err
 	}

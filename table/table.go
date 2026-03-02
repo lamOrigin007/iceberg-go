@@ -23,6 +23,7 @@ import (
 	"log"
 	"runtime"
 	"slices"
+	"time"
 
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
@@ -364,6 +365,20 @@ func WithValueCollector(collector ValueCollector) ScanOption {
 
 	return func(scan *Scan) {
 		scan.valueCollector = collector
+	}
+}
+
+// WithDynamicFilterProvider устанавливает provider для ожидания динамических фильтров
+// перед началом сканирования. Фильтры ожидаются с указанным таймаутом.
+// Если фильтры не готовы за указанное время, сканирование продолжается без них.
+func WithDynamicFilterProvider(provider FilterProvider, timeout time.Duration) ScanOption {
+	if provider == nil {
+		return noopOption
+	}
+
+	return func(scan *Scan) {
+		scan.filterProvider = provider
+		scan.filterTimeout = timeout
 	}
 }
 
