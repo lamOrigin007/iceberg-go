@@ -248,6 +248,10 @@ func (as *arrowScan) projectedFieldIDs() (set[int], error) {
 		}
 	}
 
+	// Добавляем поля из boundRowFilter
+	// Примечание: поля из lazy dynamic filter уже добавлены в selectedFields
+	// в Scan.ToArrowRecords() до вызова Projection(), поэтому они уже
+	// присутствуют в as.projectedSchema
 	if as.boundRowFilter != nil {
 		extracted, err := iceberg.ExtractFieldIDs(as.boundRowFilter)
 		if err != nil {
@@ -256,22 +260,6 @@ func (as *arrowScan) projectedFieldIDs() (set[int], error) {
 
 		for _, id := range extracted {
 			idset[id] = struct{}{}
-		}
-	}
-
-	// Добавляем поля из lazy фильтра если он доступен
-	// Это необходимо для корректной работы фильтрации на уровне файлов
-	if as.lazyFilterProvider != nil {
-		filter := as.lazyFilterProvider.GetFilter()
-		if filter != nil && !filter.Equals(iceberg.AlwaysTrue{}) {
-			extracted, err := iceberg.ExtractFieldIDs(filter)
-			if err != nil {
-				return nil, err
-			}
-
-			for _, id := range extracted {
-				idset[id] = struct{}{}
-			}
 		}
 	}
 
