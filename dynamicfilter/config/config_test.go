@@ -21,7 +21,7 @@ import (
 	"testing"
 
 	"github.com/apache/iceberg-go"
-	"github.com/apache/iceberg-go/dynamicfilter"
+	"github.com/apache/iceberg-go/dynamicfilter/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -29,15 +29,23 @@ import (
 func TestParseGUCMappings_Basic(t *testing.T) {
 	gucValue := "lineitem.l_orderkey=orders.o_orderkey,lineitem.l_partkey=part.p_partkey"
 
-	schema := iceberg.NewSchema(0,
+	lineitemSchema := iceberg.NewSchema(0,
 		iceberg.NestedField{ID: 1, Name: "l_orderkey", Type: iceberg.PrimitiveTypes.Int64},
 		iceberg.NestedField{ID: 2, Name: "l_partkey", Type: iceberg.PrimitiveTypes.Int64},
 	)
 
+	ordersSchema := iceberg.NewSchema(0,
+		iceberg.NestedField{ID: 1, Name: "o_orderkey", Type: iceberg.PrimitiveTypes.Int64},
+	)
+
+	partSchema := iceberg.NewSchema(0,
+		iceberg.NestedField{ID: 1, Name: "p_partkey", Type: iceberg.PrimitiveTypes.Int64},
+	)
+
 	tableAliases := map[string]*iceberg.Schema{
-		"lineitem": schema,
-		"orders":   schema,
-		"part":     schema,
+		"lineitem": lineitemSchema,
+		"orders":   ordersSchema,
+		"part":     partSchema,
 	}
 
 	config, err := ParseGUCMappings(gucValue, tableAliases)
@@ -190,7 +198,7 @@ func TestParseEnabled(t *testing.T) {
 func TestDynamicFilterConfig_IsSourceTable(t *testing.T) {
 	config := &DynamicFilterConfig{
 		Enabled: true,
-		Mappings: []dynamicfilter.FieldMapping{
+		Mappings: []types.FieldMapping{
 			{TargetAlias: "lineitem", SourceAlias: "orders"},
 			{TargetAlias: "lineitem", SourceAlias: "part"},
 		},
@@ -205,7 +213,7 @@ func TestDynamicFilterConfig_IsSourceTable(t *testing.T) {
 func TestDynamicFilterConfig_IsTargetTable(t *testing.T) {
 	config := &DynamicFilterConfig{
 		Enabled: true,
-		Mappings: []dynamicfilter.FieldMapping{
+		Mappings: []types.FieldMapping{
 			{TargetAlias: "lineitem", SourceAlias: "orders"},
 			{TargetAlias: "lineitem", SourceAlias: "part"},
 		},
@@ -219,7 +227,7 @@ func TestDynamicFilterConfig_IsTargetTable(t *testing.T) {
 func TestDynamicFilterConfig_GetSourceAliases(t *testing.T) {
 	config := &DynamicFilterConfig{
 		Enabled: true,
-		Mappings: []dynamicfilter.FieldMapping{
+		Mappings: []types.FieldMapping{
 			{TargetAlias: "lineitem", SourceAlias: "orders"},
 			{TargetAlias: "lineitem", SourceAlias: "part"},
 			{TargetAlias: "orders", SourceAlias: "customer"},
@@ -236,7 +244,7 @@ func TestDynamicFilterConfig_GetSourceAliases(t *testing.T) {
 func TestDynamicFilterConfig_GetTargetAliases(t *testing.T) {
 	config := &DynamicFilterConfig{
 		Enabled: true,
-		Mappings: []dynamicfilter.FieldMapping{
+		Mappings: []types.FieldMapping{
 			{TargetAlias: "lineitem", SourceAlias: "orders"},
 			{TargetAlias: "lineitem", SourceAlias: "part"},
 			{TargetAlias: "orders", SourceAlias: "customer"},
@@ -252,7 +260,7 @@ func TestDynamicFilterConfig_GetTargetAliases(t *testing.T) {
 func TestDynamicFilterConfig_HasMappings(t *testing.T) {
 	config := &DynamicFilterConfig{
 		Enabled: true,
-		Mappings: []dynamicfilter.FieldMapping{
+		Mappings: []types.FieldMapping{
 			{TargetAlias: "lineitem", SourceAlias: "orders"},
 		},
 	}
