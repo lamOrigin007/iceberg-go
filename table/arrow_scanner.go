@@ -23,6 +23,7 @@ import (
 	"iter"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
@@ -225,6 +226,15 @@ type arrowScan struct {
 	
 	// valueCollector для сбора значений из RecordBatch
 	valueCollector ValueCollector
+	
+	// lazyFilterProvider для применения фильтров во время сканирования
+	lazyFilterProvider     FilterProvider
+	lazyFilterCheckTimeout time.Duration
+	lazyFilterApplied      bool
+	lazyFilterMu           sync.RWMutex
+	lazyFilterFunc         recProcessFn
+	lazyBatchesProcessed   int64
+	lazyCheckInterval      int64
 }
 
 func (as *arrowScan) projectedFieldIDs() (set[int], error) {
@@ -250,6 +260,61 @@ func (as *arrowScan) projectedFieldIDs() (set[int], error) {
 	}
 
 	return idset, nil
+}
+
+// checkAndUpdateFilter проверяет готовность динамического фильтра и применяет его
+func (as *arrowScan) checkAndUpdateFilter(ctx context.Context) {
+	if !as.lazyFilterApplied && as.lazyFilterProvider != nil {
+		as.lazyFilterMu.Lock()
+		defer as.lazyFilterMu.Unlock()
+
+		if !as.lazyFilterApplied {
+			waitCtx, cancel := context.WithTimeout(ctx, as.lazyFilterCheckTimeout)
+			defer cancel()
+
+			if as.lazyFilterProvider.WaitForFilters(waitCtx, as.lazyFilterCheckTimeout) {
+				additionalFilter := as.lazyFilterProvider.GetFilter()
+				if additionalFilter != nil && !additionalFilter.Equals(iceberg.AlwaysTrue{}) {
+					// Создаем filterFunc для динамического фильтра
+					as.lazyFilterFunc = as.buildLazyFilterFunc(ctx, additionalFilter)
+				}
+				as.lazyFilterApplied = true
+			}
+		}
+	}
+}
+
+// buildLazyFilterFunc строит функцию фильтрации для динамического фильтра
+func (as *arrowScan) buildLazyFilterFunc(ctx context.Context, filter iceberg.BooleanExpression) recProcessFn {
+	// Конвертируем iceberg.BooleanExpression в substrait.Expression
+	extSet, substraitFilter, err := substrait.ConvertExpr(as.projectedSchema, filter, as.caseSensitive)
+	if err != nil {
+		// Если конвертация не удалась, возвращаем функцию которая пропускает все записи
+		return func(r arrow.RecordBatch) (arrow.RecordBatch, error) {
+			r.Retain()
+			return r, nil
+		}
+	}
+	
+	ctx = exprs.WithExtensionIDSet(ctx, exprs.NewExtensionSetDefault(*extSet))
+
+	return func(r arrow.RecordBatch) (arrow.RecordBatch, error) {
+		defer r.Release()
+
+		input := compute.NewDatumWithoutOwning(r)
+		mask, err := exprs.ExecuteScalarExpression(ctx, r.Schema(), substraitFilter, input)
+		if err != nil {
+			return nil, err
+		}
+		defer mask.Release()
+
+		result, err := compute.Filter(ctx, input, mask, *compute.DefaultFilterOptions())
+		if err != nil {
+			return nil, err
+		}
+
+		return result.(*compute.RecordDatum).Value, nil
+	}
 }
 
 type enumeratedRecord struct {
@@ -381,6 +446,25 @@ func (as *arrowScan) processRecords(
 				return err
 			}
 		}
+		
+		// Применение динамического фильтра если есть
+		as.lazyFilterMu.RLock()
+		lazyFunc := as.lazyFilterFunc
+		as.lazyFilterMu.RUnlock()
+		
+		if lazyFunc != nil {
+			prev, err = lazyFunc(prev)
+			if err != nil {
+				return err
+			}
+		}
+		
+		// Периодическая проверка готовности фильтра
+		as.lazyBatchesProcessed++
+		if !as.lazyFilterApplied && as.lazyFilterProvider != nil &&
+		   as.lazyBatchesProcessed % as.lazyCheckInterval == 0 {
+			as.checkAndUpdateFilter(ctx)
+		}
 	}
 
 	if prev != nil {
@@ -416,6 +500,9 @@ func (as *arrowScan) recordsFromTask(ctx context.Context, task internal.Enumerat
 		return err
 	}
 	defer iceinternal.CheckedClose(rdr, &err)
+
+	// Проверка готовности фильтра перед началом обработки файла
+	as.checkAndUpdateFilter(ctx)
 
 	pipeline := make([]recProcessFn, 0, 2)
 	if len(positionalDeletes) > 0 {

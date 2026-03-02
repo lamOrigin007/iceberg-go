@@ -577,6 +577,10 @@ func (scan *Scan) ToArrowRecords(ctx context.Context) (*arrow.Schema, iter.Seq2[
 		options:         scan.options,
 		concurrency:     scan.concurrency,
 		valueCollector:  scan.valueCollector,
+		// Lazy dynamic filter
+		lazyFilterProvider:     scan.filterProvider,
+		lazyFilterCheckTimeout: scan.filterTimeout,
+		lazyCheckInterval:      100, // проверять каждые 100 батчей по умолчанию
 	}).GetRecords(ctx, tasks)
 }
 
