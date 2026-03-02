@@ -521,21 +521,48 @@ func (scan *Scan) ToArrowRecords(ctx context.Context) (*arrow.Schema, iter.Seq2[
 		if timeout == 0 {
 			timeout = 30 * time.Second // default timeout
 		}
-		
+
 		waitCtx, cancel := context.WithTimeout(ctx, timeout)
 		defer cancel()
-		
+
 		if scan.filterProvider.WaitForFilters(waitCtx, timeout) {
 			// Фильтры готовы - применяем их
 			additionalFilter := scan.filterProvider.GetFilter()
 			if additionalFilter != nil && !additionalFilter.Equals(iceberg.AlwaysTrue{}) {
+				// Извлекаем field IDs из фильтра и добавляем в selectedFields
+				// чтобы эти поля были включены в проекцию
+				filterFieldIDs, err := iceberg.ExtractFieldIDs(additionalFilter)
+				if err == nil && len(filterFieldIDs) > 0 {
+					// Добавляем поля из фильтра в selectedFields если их там нет
+					curSchema := scan.metadata.CurrentSchema()
+					for _, fieldID := range filterFieldIDs {
+						field, ok := curSchema.FindFieldByID(fieldID)
+						if !ok {
+							continue
+						}
+
+						fieldName := field.Name
+						found := false
+						for _, selected := range scan.selectedFields {
+							if selected == fieldName || selected == "*" {
+								found = true
+								break
+							}
+						}
+
+						if !found {
+							scan.selectedFields = append(scan.selectedFields, fieldName)
+						}
+					}
+				}
+
 				// Объединяем с существующим rowFilter
 				if scan.rowFilter != nil && !scan.rowFilter.Equals(iceberg.AlwaysTrue{}) {
 					scan.rowFilter = iceberg.NewAnd(scan.rowFilter, additionalFilter)
 				} else {
 					scan.rowFilter = additionalFilter
 				}
-				
+
 				// Пересоздаем partition filters с новым фильтром
 				scan.partitionFilters = newKeyDefaultMapWrapErr(scan.buildPartitionProjection)
 			}

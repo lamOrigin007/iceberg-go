@@ -259,6 +259,22 @@ func (as *arrowScan) projectedFieldIDs() (set[int], error) {
 		}
 	}
 
+	// Добавляем поля из lazy фильтра если он доступен
+	// Это необходимо для корректной работы фильтрации на уровне файлов
+	if as.lazyFilterProvider != nil {
+		filter := as.lazyFilterProvider.GetFilter()
+		if filter != nil && !filter.Equals(iceberg.AlwaysTrue{}) {
+			extracted, err := iceberg.ExtractFieldIDs(filter)
+			if err != nil {
+				return nil, err
+			}
+
+			for _, id := range extracted {
+				idset[id] = struct{}{}
+			}
+		}
+	}
+
 	return idset, nil
 }
 
