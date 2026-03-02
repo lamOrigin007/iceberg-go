@@ -295,7 +295,7 @@ func (as *arrowScan) buildLazyFilterFunc(ctx context.Context, filter iceberg.Boo
 			return r, nil
 		}
 	}
-	
+
 	ctx = exprs.WithExtensionIDSet(ctx, exprs.NewExtensionSetDefault(*extSet))
 
 	return func(r arrow.RecordBatch) (arrow.RecordBatch, error) {
@@ -315,6 +315,107 @@ func (as *arrowScan) buildLazyFilterFunc(ctx context.Context, filter iceberg.Boo
 
 		return result.(*compute.RecordDatum).Value, nil
 	}
+}
+
+// canDropFileByLazyFilter проверяет можно ли пропустить файл целиком на основе метаданных
+// и примененного lazyFilter. Использует статистику файла (min/max значения) для оценки.
+func (as *arrowScan) canDropFileByLazyFilter(ctx context.Context, file iceberg.DataFile, fileSchema *iceberg.Schema) (bool, error) {
+	if !as.lazyFilterApplied || as.lazyFilterFunc == nil {
+		return false, nil
+	}
+
+	// Получаем фильтр из провайдера для оценки метаданных
+	additionalFilter := as.lazyFilterProvider.GetFilter()
+	if additionalFilter == nil || additionalFilter.Equals(iceberg.AlwaysTrue{}) {
+		return false, nil
+	}
+
+	// Транслируем фильтр на схему файла
+	translatedFilter, err := iceberg.TranslateColumnNames(additionalFilter, fileSchema)
+	if err != nil {
+		return false, err
+	}
+
+	if translatedFilter.Equals(iceberg.AlwaysFalse{}) {
+		return true, nil
+	}
+
+	// Привязываем фильтр к схеме файла используя custom bind visitor
+	// который не вызывает ошибку для уже bound predicates
+	boundFilter, err := bindExprWithExistingBound(fileSchema, translatedFilter, as.caseSensitive)
+	if err != nil {
+		return false, err
+	}
+
+	if boundFilter.Equals(iceberg.AlwaysTrue{}) {
+		return false, nil
+	}
+
+	// Создаем evaluator для проверки метаданных файла
+	// rowsCannotMatch = false означает что файл можно пропустить
+	canMatch, err := as.evaluateFileMetrics(fileSchema, boundFilter, file)
+	if err != nil {
+		return false, err
+	}
+
+	return !canMatch, nil
+}
+
+// bindExprWithExistingBound привязывает фильтр к схеме, сохраняя уже bound predicates
+func bindExprWithExistingBound(schema *iceberg.Schema, filter iceberg.BooleanExpression, caseSensitive bool) (iceberg.BooleanExpression, error) {
+	return iceberg.VisitExpr(filter, &lazyBindVisitor{schema: schema, caseSensitive: caseSensitive})
+}
+
+type lazyBindVisitor struct {
+	schema        *iceberg.Schema
+	caseSensitive bool
+}
+
+func (b *lazyBindVisitor) VisitTrue() iceberg.BooleanExpression  { return iceberg.AlwaysTrue{} }
+func (b *lazyBindVisitor) VisitFalse() iceberg.BooleanExpression { return iceberg.AlwaysFalse{} }
+func (b *lazyBindVisitor) VisitNot(child iceberg.BooleanExpression) iceberg.BooleanExpression {
+	return iceberg.NewNot(child)
+}
+func (b *lazyBindVisitor) VisitAnd(left, right iceberg.BooleanExpression) iceberg.BooleanExpression {
+	return iceberg.NewAnd(left, right)
+}
+func (b *lazyBindVisitor) VisitOr(left, right iceberg.BooleanExpression) iceberg.BooleanExpression {
+	return iceberg.NewOr(left, right)
+}
+func (b *lazyBindVisitor) VisitUnbound(pred iceberg.UnboundPredicate) iceberg.BooleanExpression {
+	expr, err := pred.Bind(b.schema, b.caseSensitive)
+	if err != nil {
+		panic(err)
+	}
+	return expr
+}
+func (b *lazyBindVisitor) VisitBound(pred iceberg.BoundPredicate) iceberg.BooleanExpression {
+	// Возвращаем bound predicate как есть вместо panic
+	return pred
+}
+
+// evaluateFileMetrics проверяет метаданные файла против фильтра
+func (as *arrowScan) evaluateFileMetrics(fileSchema *iceberg.Schema, filter iceberg.BooleanExpression, file iceberg.DataFile) (bool, error) {
+	// Используем existing inclusiveMetricsEval логику
+	// Сначала делаем RewriteNotExpr для инверсии фильтра, затем bind с сохранением bound predicates
+	rewritten, err := iceberg.RewriteNotExpr(filter)
+	if err != nil {
+		return false, err
+	}
+
+	// Привязываем переписанный фильтр к схеме (если он еще не привязан)
+	boundRewritten, err := bindExprWithExistingBound(fileSchema, rewritten, as.caseSensitive)
+	if err != nil {
+		return false, err
+	}
+
+	eval := &inclusiveMetricsEval{
+		st:                fileSchema.AsStruct(),
+		includeEmptyFiles: false,
+		expr:              boundRewritten,
+	}
+
+	return eval.Eval(file)
 }
 
 type enumeratedRecord struct {
@@ -503,6 +604,27 @@ func (as *arrowScan) recordsFromTask(ctx context.Context, task internal.Enumerat
 
 	// Проверка готовности фильтра перед началом обработки файла
 	as.checkAndUpdateFilter(ctx)
+
+	// Проверка можно ли пропустить файл целиком на основе метаданных и lazyFilter
+	if as.lazyFilterApplied {
+		dropFile, err = as.canDropFileByLazyFilter(ctx, task.Value.File, iceSchema)
+		if err != nil {
+			return err
+		}
+
+		if dropFile {
+			var emptySchema *arrow.Schema
+			emptySchema, err = SchemaToArrowSchema(as.projectedSchema, nil, false, as.useLargeTypes)
+			if err != nil {
+				return err
+			}
+			out <- enumeratedRecord{Task: task, Record: internal.Enumerated[arrow.RecordBatch]{
+				Value: array.NewRecordBatch(emptySchema, nil, 0), Index: 0, Last: true,
+			}}
+
+			return nil
+		}
+	}
 
 	pipeline := make([]recProcessFn, 0, 2)
 	if len(positionalDeletes) > 0 {
