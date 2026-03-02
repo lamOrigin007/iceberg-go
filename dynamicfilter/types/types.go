@@ -118,7 +118,7 @@ type ValueRange struct {
 
 // DynamicFilter представляет динамический фильтр, построенный на основе собранных значений
 type DynamicFilter struct {
-	FieldID          int           // Target field ID
+	FieldName        string        // Имя поля target
 	FieldType        iceberg.Type  // Тип поля
 	FilterType       FilterType    // Тип фильтра
 	Values           []iceberg.Literal // Значения для IN фильтра
@@ -138,7 +138,7 @@ func (f *DynamicFilter) BuildExpression(fieldRef iceberg.UnboundTerm) iceberg.Bo
 		if len(f.Values) == 0 {
 			return iceberg.AlwaysFalse{}
 		}
-		
+
 		// Строим OR из EqualTo предикатов используя рефлектподобный подход
 		return buildInExpression(fieldRef, f.Values)
 

@@ -174,38 +174,38 @@ func TestScanValueCollectorMultipleBatches(t *testing.T) {
 func TestScanValueCollectorBuildExpression(t *testing.T) {
 	// Этот тест демонстрирует использование ScanFilterApplier
 	// в реальных условиях
-	
+
 	ctx := context.Background()
-	
+
 	// Создаем фиктивные конфигурации
 	collectorCfg := df.ScanValueCollectorConfig{
 		QueryID:     "test-query",
 		SessionID:   "test-session",
 		SourceAlias: "orders",
-		FieldIDs:    []int{1, 2},
-		FieldTypes: map[int]iceberg.Type{
-			1: iceberg.PrimitiveTypes.Int64,
-			2: iceberg.PrimitiveTypes.String,
+		FieldNames:  []string{"order_id", "customer_name"},
+		FieldTypes: map[string]iceberg.Type{
+			"order_id": iceberg.PrimitiveTypes.Int64,
+			"customer_name": iceberg.PrimitiveTypes.String,
 		},
 		BufferSize: 1000,
 	}
-	
+
 	filterCfg := df.ScanFilterApplierConfig{
 		QueryID:     "test-query",
 		SessionID:   "test-session",
 		TargetAlias: "lineitem",
-		FieldIDs:    []int{1},
-		FieldTypes: map[int]iceberg.Type{
-			1: iceberg.PrimitiveTypes.Int64,
+		FieldNames:  []string{"order_id"},
+		FieldTypes: map[string]iceberg.Type{
+			"order_id": iceberg.PrimitiveTypes.Int64,
 		},
 		Timeout: types.DefaultWaitTimeout,
 	}
-	
+
 	// Проверяем что конфигурации создаются корректно
 	assert.Equal(t, "test-query", collectorCfg.QueryID)
 	assert.Equal(t, "lineitem", filterCfg.TargetAlias)
 	assert.Equal(t, 1000, collectorCfg.BufferSize)
-	
+
 	// В реальном тесте здесь было бы подключение к координатору
 	// и проверка работы коллектора и аппликатора фильтров
 	_ = ctx

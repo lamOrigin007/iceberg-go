@@ -117,11 +117,11 @@ type QuerySession struct {
 	// Маппинги полей
 	Mappings []types.FieldMapping
 
-	// Source состояние: source_alias -> field_id -> SourceFieldState
-	Sources map[string]map[int]*SourceFieldState
+	// Source состояние: source_alias -> field_name -> SourceFieldState
+	Sources map[string]map[string]*SourceFieldState
 
-	// Target состояние: target_alias -> field_id -> TargetFieldState
-	Targets map[string]map[int]*TargetFieldState
+	// Target состояние: target_alias -> field_name -> TargetFieldState
+	Targets map[string]map[string]*TargetFieldState
 
 	// Зарегистрированные сегменты
 	Segments map[string]*SegmentInfo // session_id -> SegmentInfo
@@ -135,7 +135,7 @@ type QuerySession struct {
 // SourceFieldState состояние сбора значений для поля source таблицы
 type SourceFieldState struct {
 	Alias       string
-	FieldID     int
+	FieldName   string
 	FieldType   iceberg.Type
 	Values      []iceberg.Literal
 	IsComplete  bool
@@ -145,10 +145,10 @@ type SourceFieldState struct {
 // TargetFieldState состояние фильтра для поля target таблицы
 type TargetFieldState struct {
 	Alias       string
-	FieldID     int
+	FieldName   string
 	FieldType   iceberg.Type
 	SourceAlias string
-	SourceFieldID int
+	SourceFieldName string
 	Filter      *types.DynamicFilter
 	IsReady     bool
 	Waiters     []chan<- *types.DynamicFilter
@@ -304,8 +304,8 @@ func (c *Coordinator) StartQuery(ctx context.Context, req *pb.StartQueryRequest)
 		LastAccessTime: time.Now(),
 		Timeout:        timeout,
 		Mappings:       mappings,
-		Sources:        make(map[string]map[int]*SourceFieldState),
-		Targets:        make(map[string]map[int]*TargetFieldState),
+		Sources:        make(map[string]map[string]*SourceFieldState),
+		Targets:        make(map[string]map[string]*TargetFieldState),
 		Segments:       make(map[string]*SegmentInfo),
 		TotalSegments:  int(req.TotalSegments),
 	}
@@ -314,12 +314,12 @@ func (c *Coordinator) StartQuery(ctx context.Context, req *pb.StartQueryRequest)
 	for _, m := range mappings {
 		// Source
 		if _, ok := session.Sources[m.SourceAlias]; !ok {
-			session.Sources[m.SourceAlias] = make(map[int]*SourceFieldState)
+			session.Sources[m.SourceAlias] = make(map[string]*SourceFieldState)
 		}
-		if _, ok := session.Sources[m.SourceAlias][m.SourceFieldID]; !ok {
-			session.Sources[m.SourceAlias][m.SourceFieldID] = &SourceFieldState{
+		if _, ok := session.Sources[m.SourceAlias][m.SourceField]; !ok {
+			session.Sources[m.SourceAlias][m.SourceField] = &SourceFieldState{
 				Alias:     m.SourceAlias,
-				FieldID:   m.SourceFieldID,
+				FieldName: m.SourceField,
 				FieldType: m.FieldType,
 				Values:    make([]iceberg.Literal, 0),
 			}
@@ -327,15 +327,15 @@ func (c *Coordinator) StartQuery(ctx context.Context, req *pb.StartQueryRequest)
 
 		// Target
 		if _, ok := session.Targets[m.TargetAlias]; !ok {
-			session.Targets[m.TargetAlias] = make(map[int]*TargetFieldState)
+			session.Targets[m.TargetAlias] = make(map[string]*TargetFieldState)
 		}
-		if _, ok := session.Targets[m.TargetAlias][m.TargetFieldID]; !ok {
-			session.Targets[m.TargetAlias][m.TargetFieldID] = &TargetFieldState{
+		if _, ok := session.Targets[m.TargetAlias][m.TargetField]; !ok {
+			session.Targets[m.TargetAlias][m.TargetField] = &TargetFieldState{
 				Alias:         m.TargetAlias,
-				FieldID:       m.TargetFieldID,
+				FieldName:     m.TargetField,
 				FieldType:     m.FieldType,
 				SourceAlias:   m.SourceAlias,
-				SourceFieldID: m.SourceFieldID,
+				SourceFieldName: m.SourceField,
 				IsReady:       false,
 				Waiters:       make([]chan<- *types.DynamicFilter, 0),
 			}
@@ -370,7 +370,7 @@ func (c *Coordinator) StopQuery(ctx context.Context, req *pb.StopQueryRequest) (
 			if !tf.IsReady {
 				// Создаем пустой фильтр для разблокировки ожидающих
 				tf.Filter = &types.DynamicFilter{
-					FieldID:          tf.FieldID,
+					FieldName:        tf.FieldName,
 					FieldType:        tf.FieldType,
 					FilterType:       types.FilterTypeUnspecified,
 					BuildTimestampMs: time.Now().UnixMilli(),
@@ -423,8 +423,7 @@ func (c *Coordinator) QueryStatus(ctx context.Context, req *pb.QueryStatusReques
 
 // CollectValues принимает поток значений от source таблиц
 func (c *Coordinator) CollectValues(stream pb.DynamicFilterService_CollectValuesServer) error {
-	var currentQueryID, currentSourceAlias string
-	var currentFieldID int
+	var currentQueryID, currentSourceAlias, currentFieldName string
 
 	for {
 		req, err := stream.Recv()
@@ -439,7 +438,7 @@ func (c *Coordinator) CollectValues(stream pb.DynamicFilterService_CollectValues
 
 		currentQueryID = req.QueryId
 		currentSourceAlias = req.SourceAlias
-		currentFieldID = int(req.FieldId)
+		currentFieldName = req.FieldName
 
 		// Получение сессии
 		c.mu.RLock()
@@ -460,11 +459,11 @@ func (c *Coordinator) CollectValues(stream pb.DynamicFilterService_CollectValues
 				fmt.Sprintf("unknown source alias: %s", currentSourceAlias))
 		}
 
-		sourceField, ok := sourceFields[currentFieldID]
+		sourceField, ok := sourceFields[currentFieldName]
 		if !ok {
 			session.mu.Unlock()
 			return status.Error(codes.InvalidArgument,
-				fmt.Sprintf("unknown field id: %d for source %s", currentFieldID, currentSourceAlias))
+				fmt.Sprintf("unknown field name: %s for source %s", currentFieldName, currentSourceAlias))
 		}
 
 		// Проверка лимита
@@ -494,7 +493,7 @@ func (c *Coordinator) CollectValues(stream pb.DynamicFilterService_CollectValues
 			session.CompletedSources++
 
 			// Проверка готовности фильтра для target
-			c.checkAndBuildFilter(session, currentSourceAlias, currentFieldID)
+			c.checkAndBuildFilter(session, currentSourceAlias, currentFieldName)
 		}
 
 		session.mu.Unlock()
@@ -502,14 +501,14 @@ func (c *Coordinator) CollectValues(stream pb.DynamicFilterService_CollectValues
 }
 
 // checkAndBuildFilter проверяет готов ли фильтр и строит его
-func (c *Coordinator) checkAndBuildFilter(session *QuerySession, sourceAlias string, sourceFieldID int) {
+func (c *Coordinator) checkAndBuildFilter(session *QuerySession, sourceAlias string, sourceFieldName string) {
 	session.mu.Lock()
 	defer session.mu.Unlock()
 
 	// Поиск target полей для этого source
 	for _, targetFields := range session.Targets {
 		for _, tf := range targetFields {
-			if tf.SourceAlias != sourceAlias || tf.SourceFieldID != sourceFieldID {
+			if tf.SourceAlias != sourceAlias || tf.SourceFieldName != sourceFieldName {
 				continue
 			}
 			if tf.IsReady {
@@ -517,7 +516,7 @@ func (c *Coordinator) checkAndBuildFilter(session *QuerySession, sourceAlias str
 			}
 
 			// Проверка: все ли сегменты завершили сбор этого source поля
-			sourceField := session.Sources[sourceAlias][sourceFieldID]
+			sourceField := session.Sources[sourceAlias][sourceFieldName]
 			if sourceField.SegmentCount < session.TotalSegments {
 				continue // ещё не все сегменты завершили
 			}
@@ -529,6 +528,9 @@ func (c *Coordinator) checkAndBuildFilter(session *QuerySession, sourceAlias str
 				c.config.InPredicateLimit,
 				c.config.MaxRangesPerFilter,
 			)
+			
+			// Устанавливаем имя поля в фильтре
+			filter.FieldName = tf.FieldName
 
 			tf.Filter = filter
 			tf.IsReady = true
@@ -575,11 +577,11 @@ func (c *Coordinator) GetFilter(ctx context.Context, req *pb.GetFilterRequest) (
 		}, nil
 	}
 
-	tf, ok := targetFields[int(req.FieldId)]
+	tf, ok := targetFields[req.FieldName]
 	if !ok {
 		return &pb.GetFilterResponse{
 			IsReady: false,
-			ErrorMessage: fmt.Sprintf("unknown field id: %d", req.FieldId),
+			ErrorMessage: fmt.Sprintf("unknown field name: %s", req.FieldName),
 		}, nil
 	}
 
@@ -621,13 +623,13 @@ func (c *Coordinator) WaitForFilter(ctx context.Context, req *pb.WaitForFilterRe
 		}, nil
 	}
 
-	tf, ok := targetFields[int(req.FieldId)]
+	tf, ok := targetFields[req.FieldName]
 	if !ok {
 		session.mu.Unlock()
 		return &pb.WaitForFilterResponse{
 			IsReady: false,
 			TimedOut: false,
-			ErrorMessage: fmt.Sprintf("unknown field id: %d", req.FieldId),
+			ErrorMessage: fmt.Sprintf("unknown field name: %s", req.FieldName),
 		}, nil
 	}
 
@@ -748,11 +750,11 @@ func (c *Coordinator) SignalSourceComplete(ctx context.Context, req *pb.SignalSo
 		}, nil
 	}
 
-	sourceField, ok := sourceFields[int(req.FieldId)]
+	sourceField, ok := sourceFields[req.FieldName]
 	if !ok {
 		return &pb.SignalSourceCompleteResponse{
 			Success: false,
-			ErrorMessage: fmt.Sprintf("unknown field id: %d", req.FieldId),
+			ErrorMessage: fmt.Sprintf("unknown field name: %s", req.FieldName),
 		}, nil
 	}
 
@@ -762,14 +764,14 @@ func (c *Coordinator) SignalSourceComplete(ctx context.Context, req *pb.SignalSo
 		session.CompletedSources++
 
 		// Проверка готовности фильтра
-		c.checkAndBuildFilter(session, req.SourceAlias, int(req.FieldId))
+		c.checkAndBuildFilter(session, req.SourceAlias, req.FieldName)
 	}
 
 	// Проверка готовности фильтра для target
 	filterReady := false
 	for _, targetFields := range session.Targets {
 		for _, tf := range targetFields {
-			if tf.SourceAlias == req.SourceAlias && tf.SourceFieldID == int(req.FieldId) {
+			if tf.SourceAlias == req.SourceAlias && tf.SourceFieldName == req.FieldName {
 				filterReady = filterReady || tf.IsReady
 			}
 		}
@@ -918,7 +920,7 @@ func icebergFilterToProto(f *types.DynamicFilter) *pb.DynamicFilter {
 	}
 
 	pbFilter := &pb.DynamicFilter{
-		FieldId:          int32(f.FieldID),
+		FieldName:        f.FieldName,
 		FieldType:        typeToString(f.FieldType),
 		FilterType:       pb.FilterType(f.FilterType),
 		TotalValues:      f.TotalValues,

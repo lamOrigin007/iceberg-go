@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.6.1
 // - protoc             v6.32.0
-// source: dynamicfilter/proto/dynamic_filter.proto
+// source: dynamic_filter.proto
 
 package proto
 
@@ -391,5 +391,5 @@ var DynamicFilterService_ServiceDesc = grpc.ServiceDesc{
 			ClientStreams: true,
 		},
 	},
-	Metadata: "dynamicfilter/proto/dynamic_filter.proto",
+	Metadata: "dynamic_filter.proto",
 }

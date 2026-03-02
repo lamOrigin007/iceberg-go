@@ -58,17 +58,17 @@ type FDWArrowStream struct {
 
 // FDWStreamConfig конфигурация для FDWArrowStream
 type FDWStreamConfig struct {
-	QueryID       string
-	SessionID     string
-	TableAlias    string
-	IsSource      bool
-	IsTarget      bool
-	SourceFields  []int           // field IDs для извлечения значений
-	SourceFieldTypes map[int]iceberg.Type
-	TargetFields  []int           // field IDs для применения фильтров
-	TargetFieldTypes map[int]iceberg.Type
-	BufferSize    int
-	WaitTimeout   int // секунды
+	QueryID          string
+	SessionID        string
+	TableAlias       string
+	IsSource         bool
+	IsTarget         bool
+	SourceFields     []string              // field names для извлечения значений
+	SourceFieldTypes map[string]iceberg.Type
+	TargetFields     []string              // field names для применения фильтров
+	TargetFieldTypes map[string]iceberg.Type
+	BufferSize       int
+	WaitTimeout      int // секунды
 }
 
 // NewFDWArrowStream создает новый FDWArrowStream
@@ -347,54 +347,54 @@ func NewFDWStreamManager(
 // RegisterSource регистрирует source таблицу
 func (m *FDWStreamManager) RegisterSource(
 	tableAlias string,
-	fieldIDs []int,
-	fieldTypes map[int]iceberg.Type,
+	fieldNames []string,
+	fieldTypes map[string]iceberg.Type,
 	bufferSize int,
 ) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	m.configs[tableAlias] = FDWStreamConfig{
-		QueryID:        m.queryID,
-		SessionID:      m.sessionID,
-		TableAlias:     tableAlias,
-		IsSource:       true,
-		IsTarget:       false,
-		SourceFields:   fieldIDs,
+		QueryID:          m.queryID,
+		SessionID:        m.sessionID,
+		TableAlias:       tableAlias,
+		IsSource:         true,
+		IsTarget:         false,
+		SourceFields:     fieldNames,
 		SourceFieldTypes: fieldTypes,
-		BufferSize:     bufferSize,
+		BufferSize:       bufferSize,
 	}
 }
 
 // RegisterTarget регистрирует target таблицу
 func (m *FDWStreamManager) RegisterTarget(
 	tableAlias string,
-	fieldIDs []int,
-	fieldTypes map[int]iceberg.Type,
+	fieldNames []string,
+	fieldTypes map[string]iceberg.Type,
 	waitTimeout int,
 ) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	m.configs[tableAlias] = FDWStreamConfig{
-		QueryID:        m.queryID,
-		SessionID:      m.sessionID,
-		TableAlias:     tableAlias,
-		IsSource:       false,
-		IsTarget:       true,
-		TargetFields:   fieldIDs,
+		QueryID:          m.queryID,
+		SessionID:        m.sessionID,
+		TableAlias:       tableAlias,
+		IsSource:         false,
+		IsTarget:         true,
+		TargetFields:     fieldNames,
 		TargetFieldTypes: fieldTypes,
-		WaitTimeout:    waitTimeout,
+		WaitTimeout:      waitTimeout,
 	}
 }
 
 // RegisterSourceTarget регистрирует таблицу которая является и source и target
 func (m *FDWStreamManager) RegisterSourceTarget(
 	tableAlias string,
-	sourceFieldIDs []int,
-	sourceFieldTypes map[int]iceberg.Type,
-	targetFieldIDs []int,
-	targetFieldTypes map[int]iceberg.Type,
+	sourceFieldNames []string,
+	sourceFieldTypes map[string]iceberg.Type,
+	targetFieldNames []string,
+	targetFieldTypes map[string]iceberg.Type,
 	bufferSize, waitTimeout int,
 ) {
 	m.mu.Lock()
@@ -406,9 +406,9 @@ func (m *FDWStreamManager) RegisterSourceTarget(
 		TableAlias:       tableAlias,
 		IsSource:         true,
 		IsTarget:         true,
-		SourceFields:     sourceFieldIDs,
+		SourceFields:     sourceFieldNames,
 		SourceFieldTypes: sourceFieldTypes,
-		TargetFields:     targetFieldIDs,
+		TargetFields:     targetFieldNames,
 		TargetFieldTypes: targetFieldTypes,
 		BufferSize:       bufferSize,
 		WaitTimeout:      waitTimeout,

@@ -96,7 +96,7 @@ message CollectValueRequest {
     string query_id = 1;
     string session_id = 2;
     string source_alias = 3;
-    int32 field_id = 4;
+    string field_name = 4;                  // Имя поля (вместо field_id)
     repeated Literal values = 5;            // Пакет значений
     bool is_final = 6;                      // true если это последний пакет
     int64 sequence_num = 7;                 // Номер пакета для упорядочивания
@@ -112,7 +112,7 @@ message SignalSourceCompleteRequest {
     string query_id = 1;
     string session_id = 2;
     string source_alias = 3;
-    int32 field_id = 4;
+    string field_name = 4;                  // Имя поля (вместо field_id)
 }
 
 message SignalSourceCompleteResponse {
@@ -129,7 +129,7 @@ message GetFilterRequest {
     string query_id = 1;
     string session_id = 2;
     string target_alias = 3;
-    int32 field_id = 4;
+    string field_name = 4;                  // Имя поля (вместо field_id)
 }
 
 message GetFilterResponse {
@@ -142,7 +142,7 @@ message WaitForFilterRequest {
     string query_id = 1;
     string session_id = 2;
     string target_alias = 3;
-    int32 field_id = 4;
+    string field_name = 4;                  // Имя поля (вместо field_id)
     int64 timeout_ms = 5;                   // Максимальное время ожидания
 }
 
@@ -158,7 +158,7 @@ message WaitForFilterResponse {
 // ============================================================================
 
 message DynamicFilter {
-    int32 field_id = 1;                     // Target field ID
+    string field_name = 1;                  // Имя поля target
     string field_type = 2;                  // Iceberg type name
     FilterType filter_type = 3;             // Тип фильтра (IN или BETWEEN)
     repeated Literal in_values = 4;         // Значения для IN фильтра

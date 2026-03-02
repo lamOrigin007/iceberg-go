@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.11
 // 	protoc        v6.32.0
-// source: dynamicfilter/proto/dynamic_filter.proto
+// source: dynamic_filter.proto
 
 package proto
 
@@ -66,11 +66,11 @@ func (x SessionStatus) String() string {
 }
 
 func (SessionStatus) Descriptor() protoreflect.EnumDescriptor {
-	return file_dynamicfilter_proto_dynamic_filter_proto_enumTypes[0].Descriptor()
+	return file_dynamic_filter_proto_enumTypes[0].Descriptor()
 }
 
 func (SessionStatus) Type() protoreflect.EnumType {
-	return &file_dynamicfilter_proto_dynamic_filter_proto_enumTypes[0]
+	return &file_dynamic_filter_proto_enumTypes[0]
 }
 
 func (x SessionStatus) Number() protoreflect.EnumNumber {
@@ -79,7 +79,7 @@ func (x SessionStatus) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use SessionStatus.Descriptor instead.
 func (SessionStatus) EnumDescriptor() ([]byte, []int) {
-	return file_dynamicfilter_proto_dynamic_filter_proto_rawDescGZIP(), []int{0}
+	return file_dynamic_filter_proto_rawDescGZIP(), []int{0}
 }
 
 type FilterType int32
@@ -115,11 +115,11 @@ func (x FilterType) String() string {
 }
 
 func (FilterType) Descriptor() protoreflect.EnumDescriptor {
-	return file_dynamicfilter_proto_dynamic_filter_proto_enumTypes[1].Descriptor()
+	return file_dynamic_filter_proto_enumTypes[1].Descriptor()
 }
 
 func (FilterType) Type() protoreflect.EnumType {
-	return &file_dynamicfilter_proto_dynamic_filter_proto_enumTypes[1]
+	return &file_dynamic_filter_proto_enumTypes[1]
 }
 
 func (x FilterType) Number() protoreflect.EnumNumber {
@@ -128,7 +128,7 @@ func (x FilterType) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use FilterType.Descriptor instead.
 func (FilterType) EnumDescriptor() ([]byte, []int) {
-	return file_dynamicfilter_proto_dynamic_filter_proto_rawDescGZIP(), []int{1}
+	return file_dynamic_filter_proto_rawDescGZIP(), []int{1}
 }
 
 type StartQueryRequest struct {
@@ -144,7 +144,7 @@ type StartQueryRequest struct {
 
 func (x *StartQueryRequest) Reset() {
 	*x = StartQueryRequest{}
-	mi := &file_dynamicfilter_proto_dynamic_filter_proto_msgTypes[0]
+	mi := &file_dynamic_filter_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -156,7 +156,7 @@ func (x *StartQueryRequest) String() string {
 func (*StartQueryRequest) ProtoMessage() {}
 
 func (x *StartQueryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_dynamicfilter_proto_dynamic_filter_proto_msgTypes[0]
+	mi := &file_dynamic_filter_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -169,7 +169,7 @@ func (x *StartQueryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StartQueryRequest.ProtoReflect.Descriptor instead.
 func (*StartQueryRequest) Descriptor() ([]byte, []int) {
-	return file_dynamicfilter_proto_dynamic_filter_proto_rawDescGZIP(), []int{0}
+	return file_dynamic_filter_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *StartQueryRequest) GetQueryId() string {
@@ -217,7 +217,7 @@ type StartQueryResponse struct {
 
 func (x *StartQueryResponse) Reset() {
 	*x = StartQueryResponse{}
-	mi := &file_dynamicfilter_proto_dynamic_filter_proto_msgTypes[1]
+	mi := &file_dynamic_filter_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -229,7 +229,7 @@ func (x *StartQueryResponse) String() string {
 func (*StartQueryResponse) ProtoMessage() {}
 
 func (x *StartQueryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_dynamicfilter_proto_dynamic_filter_proto_msgTypes[1]
+	mi := &file_dynamic_filter_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -242,7 +242,7 @@ func (x *StartQueryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StartQueryResponse.ProtoReflect.Descriptor instead.
 func (*StartQueryResponse) Descriptor() ([]byte, []int) {
-	return file_dynamicfilter_proto_dynamic_filter_proto_rawDescGZIP(), []int{1}
+	return file_dynamic_filter_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *StartQueryResponse) GetSuccess() bool {
@@ -269,7 +269,7 @@ type StopQueryRequest struct {
 
 func (x *StopQueryRequest) Reset() {
 	*x = StopQueryRequest{}
-	mi := &file_dynamicfilter_proto_dynamic_filter_proto_msgTypes[2]
+	mi := &file_dynamic_filter_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -281,7 +281,7 @@ func (x *StopQueryRequest) String() string {
 func (*StopQueryRequest) ProtoMessage() {}
 
 func (x *StopQueryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_dynamicfilter_proto_dynamic_filter_proto_msgTypes[2]
+	mi := &file_dynamic_filter_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -294,7 +294,7 @@ func (x *StopQueryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StopQueryRequest.ProtoReflect.Descriptor instead.
 func (*StopQueryRequest) Descriptor() ([]byte, []int) {
-	return file_dynamicfilter_proto_dynamic_filter_proto_rawDescGZIP(), []int{2}
+	return file_dynamic_filter_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *StopQueryRequest) GetQueryId() string {
@@ -321,7 +321,7 @@ type StopQueryResponse struct {
 
 func (x *StopQueryResponse) Reset() {
 	*x = StopQueryResponse{}
-	mi := &file_dynamicfilter_proto_dynamic_filter_proto_msgTypes[3]
+	mi := &file_dynamic_filter_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -333,7 +333,7 @@ func (x *StopQueryResponse) String() string {
 func (*StopQueryResponse) ProtoMessage() {}
 
 func (x *StopQueryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_dynamicfilter_proto_dynamic_filter_proto_msgTypes[3]
+	mi := &file_dynamic_filter_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -346,7 +346,7 @@ func (x *StopQueryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StopQueryResponse.ProtoReflect.Descriptor instead.
 func (*StopQueryResponse) Descriptor() ([]byte, []int) {
-	return file_dynamicfilter_proto_dynamic_filter_proto_rawDescGZIP(), []int{3}
+	return file_dynamic_filter_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *StopQueryResponse) GetSuccess() bool {
@@ -373,7 +373,7 @@ type QueryStatusRequest struct {
 
 func (x *QueryStatusRequest) Reset() {
 	*x = QueryStatusRequest{}
-	mi := &file_dynamicfilter_proto_dynamic_filter_proto_msgTypes[4]
+	mi := &file_dynamic_filter_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -385,7 +385,7 @@ func (x *QueryStatusRequest) String() string {
 func (*QueryStatusRequest) ProtoMessage() {}
 
 func (x *QueryStatusRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_dynamicfilter_proto_dynamic_filter_proto_msgTypes[4]
+	mi := &file_dynamic_filter_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -398,7 +398,7 @@ func (x *QueryStatusRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QueryStatusRequest.ProtoReflect.Descriptor instead.
 func (*QueryStatusRequest) Descriptor() ([]byte, []int) {
-	return file_dynamicfilter_proto_dynamic_filter_proto_rawDescGZIP(), []int{4}
+	return file_dynamic_filter_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *QueryStatusRequest) GetQueryId() string {
@@ -428,7 +428,7 @@ type QueryStatusResponse struct {
 
 func (x *QueryStatusResponse) Reset() {
 	*x = QueryStatusResponse{}
-	mi := &file_dynamicfilter_proto_dynamic_filter_proto_msgTypes[5]
+	mi := &file_dynamic_filter_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -440,7 +440,7 @@ func (x *QueryStatusResponse) String() string {
 func (*QueryStatusResponse) ProtoMessage() {}
 
 func (x *QueryStatusResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_dynamicfilter_proto_dynamic_filter_proto_msgTypes[5]
+	mi := &file_dynamic_filter_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -453,7 +453,7 @@ func (x *QueryStatusResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QueryStatusResponse.ProtoReflect.Descriptor instead.
 func (*QueryStatusResponse) Descriptor() ([]byte, []int) {
-	return file_dynamicfilter_proto_dynamic_filter_proto_rawDescGZIP(), []int{5}
+	return file_dynamic_filter_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *QueryStatusResponse) GetQueryId() string {
@@ -506,7 +506,7 @@ type FieldMapping struct {
 
 func (x *FieldMapping) Reset() {
 	*x = FieldMapping{}
-	mi := &file_dynamicfilter_proto_dynamic_filter_proto_msgTypes[6]
+	mi := &file_dynamic_filter_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -518,7 +518,7 @@ func (x *FieldMapping) String() string {
 func (*FieldMapping) ProtoMessage() {}
 
 func (x *FieldMapping) ProtoReflect() protoreflect.Message {
-	mi := &file_dynamicfilter_proto_dynamic_filter_proto_msgTypes[6]
+	mi := &file_dynamic_filter_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -531,7 +531,7 @@ func (x *FieldMapping) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FieldMapping.ProtoReflect.Descriptor instead.
 func (*FieldMapping) Descriptor() ([]byte, []int) {
-	return file_dynamicfilter_proto_dynamic_filter_proto_rawDescGZIP(), []int{6}
+	return file_dynamic_filter_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *FieldMapping) GetTargetAlias() string {
@@ -588,7 +588,7 @@ type CollectValueRequest struct {
 	QueryId       string                 `protobuf:"bytes,1,opt,name=query_id,json=queryId,proto3" json:"query_id,omitempty"`
 	SessionId     string                 `protobuf:"bytes,2,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
 	SourceAlias   string                 `protobuf:"bytes,3,opt,name=source_alias,json=sourceAlias,proto3" json:"source_alias,omitempty"`
-	FieldId       int32                  `protobuf:"varint,4,opt,name=field_id,json=fieldId,proto3" json:"field_id,omitempty"`
+	FieldName     string                 `protobuf:"bytes,4,opt,name=field_name,json=fieldName,proto3" json:"field_name,omitempty"`        // Имя поля (вместо field_id)
 	Values        []*Literal             `protobuf:"bytes,5,rep,name=values,proto3" json:"values,omitempty"`                               // Пакет значений
 	IsFinal       bool                   `protobuf:"varint,6,opt,name=is_final,json=isFinal,proto3" json:"is_final,omitempty"`             // true если это последний пакет
 	SequenceNum   int64                  `protobuf:"varint,7,opt,name=sequence_num,json=sequenceNum,proto3" json:"sequence_num,omitempty"` // Номер пакета для упорядочивания
@@ -598,7 +598,7 @@ type CollectValueRequest struct {
 
 func (x *CollectValueRequest) Reset() {
 	*x = CollectValueRequest{}
-	mi := &file_dynamicfilter_proto_dynamic_filter_proto_msgTypes[7]
+	mi := &file_dynamic_filter_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -610,7 +610,7 @@ func (x *CollectValueRequest) String() string {
 func (*CollectValueRequest) ProtoMessage() {}
 
 func (x *CollectValueRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_dynamicfilter_proto_dynamic_filter_proto_msgTypes[7]
+	mi := &file_dynamic_filter_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -623,7 +623,7 @@ func (x *CollectValueRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CollectValueRequest.ProtoReflect.Descriptor instead.
 func (*CollectValueRequest) Descriptor() ([]byte, []int) {
-	return file_dynamicfilter_proto_dynamic_filter_proto_rawDescGZIP(), []int{7}
+	return file_dynamic_filter_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *CollectValueRequest) GetQueryId() string {
@@ -647,11 +647,11 @@ func (x *CollectValueRequest) GetSourceAlias() string {
 	return ""
 }
 
-func (x *CollectValueRequest) GetFieldId() int32 {
+func (x *CollectValueRequest) GetFieldName() string {
 	if x != nil {
-		return x.FieldId
+		return x.FieldName
 	}
-	return 0
+	return ""
 }
 
 func (x *CollectValueRequest) GetValues() []*Literal {
@@ -686,7 +686,7 @@ type CollectValueResponse struct {
 
 func (x *CollectValueResponse) Reset() {
 	*x = CollectValueResponse{}
-	mi := &file_dynamicfilter_proto_dynamic_filter_proto_msgTypes[8]
+	mi := &file_dynamic_filter_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -698,7 +698,7 @@ func (x *CollectValueResponse) String() string {
 func (*CollectValueResponse) ProtoMessage() {}
 
 func (x *CollectValueResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_dynamicfilter_proto_dynamic_filter_proto_msgTypes[8]
+	mi := &file_dynamic_filter_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -711,7 +711,7 @@ func (x *CollectValueResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CollectValueResponse.ProtoReflect.Descriptor instead.
 func (*CollectValueResponse) Descriptor() ([]byte, []int) {
-	return file_dynamicfilter_proto_dynamic_filter_proto_rawDescGZIP(), []int{8}
+	return file_dynamic_filter_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *CollectValueResponse) GetSuccess() bool {
@@ -740,14 +740,14 @@ type SignalSourceCompleteRequest struct {
 	QueryId       string                 `protobuf:"bytes,1,opt,name=query_id,json=queryId,proto3" json:"query_id,omitempty"`
 	SessionId     string                 `protobuf:"bytes,2,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
 	SourceAlias   string                 `protobuf:"bytes,3,opt,name=source_alias,json=sourceAlias,proto3" json:"source_alias,omitempty"`
-	FieldId       int32                  `protobuf:"varint,4,opt,name=field_id,json=fieldId,proto3" json:"field_id,omitempty"`
+	FieldName     string                 `protobuf:"bytes,4,opt,name=field_name,json=fieldName,proto3" json:"field_name,omitempty"` // Имя поля (вместо field_id)
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *SignalSourceCompleteRequest) Reset() {
 	*x = SignalSourceCompleteRequest{}
-	mi := &file_dynamicfilter_proto_dynamic_filter_proto_msgTypes[9]
+	mi := &file_dynamic_filter_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -759,7 +759,7 @@ func (x *SignalSourceCompleteRequest) String() string {
 func (*SignalSourceCompleteRequest) ProtoMessage() {}
 
 func (x *SignalSourceCompleteRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_dynamicfilter_proto_dynamic_filter_proto_msgTypes[9]
+	mi := &file_dynamic_filter_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -772,7 +772,7 @@ func (x *SignalSourceCompleteRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SignalSourceCompleteRequest.ProtoReflect.Descriptor instead.
 func (*SignalSourceCompleteRequest) Descriptor() ([]byte, []int) {
-	return file_dynamicfilter_proto_dynamic_filter_proto_rawDescGZIP(), []int{9}
+	return file_dynamic_filter_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *SignalSourceCompleteRequest) GetQueryId() string {
@@ -796,11 +796,11 @@ func (x *SignalSourceCompleteRequest) GetSourceAlias() string {
 	return ""
 }
 
-func (x *SignalSourceCompleteRequest) GetFieldId() int32 {
+func (x *SignalSourceCompleteRequest) GetFieldName() string {
 	if x != nil {
-		return x.FieldId
+		return x.FieldName
 	}
-	return 0
+	return ""
 }
 
 type SignalSourceCompleteResponse struct {
@@ -814,7 +814,7 @@ type SignalSourceCompleteResponse struct {
 
 func (x *SignalSourceCompleteResponse) Reset() {
 	*x = SignalSourceCompleteResponse{}
-	mi := &file_dynamicfilter_proto_dynamic_filter_proto_msgTypes[10]
+	mi := &file_dynamic_filter_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -826,7 +826,7 @@ func (x *SignalSourceCompleteResponse) String() string {
 func (*SignalSourceCompleteResponse) ProtoMessage() {}
 
 func (x *SignalSourceCompleteResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_dynamicfilter_proto_dynamic_filter_proto_msgTypes[10]
+	mi := &file_dynamic_filter_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -839,7 +839,7 @@ func (x *SignalSourceCompleteResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SignalSourceCompleteResponse.ProtoReflect.Descriptor instead.
 func (*SignalSourceCompleteResponse) Descriptor() ([]byte, []int) {
-	return file_dynamicfilter_proto_dynamic_filter_proto_rawDescGZIP(), []int{10}
+	return file_dynamic_filter_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *SignalSourceCompleteResponse) GetSuccess() bool {
@@ -868,14 +868,14 @@ type GetFilterRequest struct {
 	QueryId       string                 `protobuf:"bytes,1,opt,name=query_id,json=queryId,proto3" json:"query_id,omitempty"`
 	SessionId     string                 `protobuf:"bytes,2,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
 	TargetAlias   string                 `protobuf:"bytes,3,opt,name=target_alias,json=targetAlias,proto3" json:"target_alias,omitempty"`
-	FieldId       int32                  `protobuf:"varint,4,opt,name=field_id,json=fieldId,proto3" json:"field_id,omitempty"`
+	FieldName     string                 `protobuf:"bytes,4,opt,name=field_name,json=fieldName,proto3" json:"field_name,omitempty"` // Имя поля (вместо field_id)
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetFilterRequest) Reset() {
 	*x = GetFilterRequest{}
-	mi := &file_dynamicfilter_proto_dynamic_filter_proto_msgTypes[11]
+	mi := &file_dynamic_filter_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -887,7 +887,7 @@ func (x *GetFilterRequest) String() string {
 func (*GetFilterRequest) ProtoMessage() {}
 
 func (x *GetFilterRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_dynamicfilter_proto_dynamic_filter_proto_msgTypes[11]
+	mi := &file_dynamic_filter_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -900,7 +900,7 @@ func (x *GetFilterRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetFilterRequest.ProtoReflect.Descriptor instead.
 func (*GetFilterRequest) Descriptor() ([]byte, []int) {
-	return file_dynamicfilter_proto_dynamic_filter_proto_rawDescGZIP(), []int{11}
+	return file_dynamic_filter_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *GetFilterRequest) GetQueryId() string {
@@ -924,11 +924,11 @@ func (x *GetFilterRequest) GetTargetAlias() string {
 	return ""
 }
 
-func (x *GetFilterRequest) GetFieldId() int32 {
+func (x *GetFilterRequest) GetFieldName() string {
 	if x != nil {
-		return x.FieldId
+		return x.FieldName
 	}
-	return 0
+	return ""
 }
 
 type GetFilterResponse struct {
@@ -942,7 +942,7 @@ type GetFilterResponse struct {
 
 func (x *GetFilterResponse) Reset() {
 	*x = GetFilterResponse{}
-	mi := &file_dynamicfilter_proto_dynamic_filter_proto_msgTypes[12]
+	mi := &file_dynamic_filter_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -954,7 +954,7 @@ func (x *GetFilterResponse) String() string {
 func (*GetFilterResponse) ProtoMessage() {}
 
 func (x *GetFilterResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_dynamicfilter_proto_dynamic_filter_proto_msgTypes[12]
+	mi := &file_dynamic_filter_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -967,7 +967,7 @@ func (x *GetFilterResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetFilterResponse.ProtoReflect.Descriptor instead.
 func (*GetFilterResponse) Descriptor() ([]byte, []int) {
-	return file_dynamicfilter_proto_dynamic_filter_proto_rawDescGZIP(), []int{12}
+	return file_dynamic_filter_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *GetFilterResponse) GetIsReady() bool {
@@ -996,7 +996,7 @@ type WaitForFilterRequest struct {
 	QueryId       string                 `protobuf:"bytes,1,opt,name=query_id,json=queryId,proto3" json:"query_id,omitempty"`
 	SessionId     string                 `protobuf:"bytes,2,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
 	TargetAlias   string                 `protobuf:"bytes,3,opt,name=target_alias,json=targetAlias,proto3" json:"target_alias,omitempty"`
-	FieldId       int32                  `protobuf:"varint,4,opt,name=field_id,json=fieldId,proto3" json:"field_id,omitempty"`
+	FieldName     string                 `protobuf:"bytes,4,opt,name=field_name,json=fieldName,proto3" json:"field_name,omitempty"`  // Имя поля (вместо field_id)
 	TimeoutMs     int64                  `protobuf:"varint,5,opt,name=timeout_ms,json=timeoutMs,proto3" json:"timeout_ms,omitempty"` // Максимальное время ожидания
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1004,7 +1004,7 @@ type WaitForFilterRequest struct {
 
 func (x *WaitForFilterRequest) Reset() {
 	*x = WaitForFilterRequest{}
-	mi := &file_dynamicfilter_proto_dynamic_filter_proto_msgTypes[13]
+	mi := &file_dynamic_filter_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1016,7 +1016,7 @@ func (x *WaitForFilterRequest) String() string {
 func (*WaitForFilterRequest) ProtoMessage() {}
 
 func (x *WaitForFilterRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_dynamicfilter_proto_dynamic_filter_proto_msgTypes[13]
+	mi := &file_dynamic_filter_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1029,7 +1029,7 @@ func (x *WaitForFilterRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WaitForFilterRequest.ProtoReflect.Descriptor instead.
 func (*WaitForFilterRequest) Descriptor() ([]byte, []int) {
-	return file_dynamicfilter_proto_dynamic_filter_proto_rawDescGZIP(), []int{13}
+	return file_dynamic_filter_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *WaitForFilterRequest) GetQueryId() string {
@@ -1053,11 +1053,11 @@ func (x *WaitForFilterRequest) GetTargetAlias() string {
 	return ""
 }
 
-func (x *WaitForFilterRequest) GetFieldId() int32 {
+func (x *WaitForFilterRequest) GetFieldName() string {
 	if x != nil {
-		return x.FieldId
+		return x.FieldName
 	}
-	return 0
+	return ""
 }
 
 func (x *WaitForFilterRequest) GetTimeoutMs() int64 {
@@ -1079,7 +1079,7 @@ type WaitForFilterResponse struct {
 
 func (x *WaitForFilterResponse) Reset() {
 	*x = WaitForFilterResponse{}
-	mi := &file_dynamicfilter_proto_dynamic_filter_proto_msgTypes[14]
+	mi := &file_dynamic_filter_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1091,7 +1091,7 @@ func (x *WaitForFilterResponse) String() string {
 func (*WaitForFilterResponse) ProtoMessage() {}
 
 func (x *WaitForFilterResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_dynamicfilter_proto_dynamic_filter_proto_msgTypes[14]
+	mi := &file_dynamic_filter_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1104,7 +1104,7 @@ func (x *WaitForFilterResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WaitForFilterResponse.ProtoReflect.Descriptor instead.
 func (*WaitForFilterResponse) Descriptor() ([]byte, []int) {
-	return file_dynamicfilter_proto_dynamic_filter_proto_rawDescGZIP(), []int{14}
+	return file_dynamic_filter_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *WaitForFilterResponse) GetIsReady() bool {
@@ -1137,7 +1137,7 @@ func (x *WaitForFilterResponse) GetTimedOut() bool {
 
 type DynamicFilter struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
-	FieldId          int32                  `protobuf:"varint,1,opt,name=field_id,json=fieldId,proto3" json:"field_id,omitempty"`                                        // Target field ID
+	FieldName        string                 `protobuf:"bytes,1,opt,name=field_name,json=fieldName,proto3" json:"field_name,omitempty"`                                   // Имя поля target
 	FieldType        string                 `protobuf:"bytes,2,opt,name=field_type,json=fieldType,proto3" json:"field_type,omitempty"`                                   // Iceberg type name
 	FilterType       FilterType             `protobuf:"varint,3,opt,name=filter_type,json=filterType,proto3,enum=dynamicfilter.FilterType" json:"filter_type,omitempty"` // Тип фильтра (IN или BETWEEN)
 	InValues         []*Literal             `protobuf:"bytes,4,rep,name=in_values,json=inValues,proto3" json:"in_values,omitempty"`                                      // Значения для IN фильтра
@@ -1150,7 +1150,7 @@ type DynamicFilter struct {
 
 func (x *DynamicFilter) Reset() {
 	*x = DynamicFilter{}
-	mi := &file_dynamicfilter_proto_dynamic_filter_proto_msgTypes[15]
+	mi := &file_dynamic_filter_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1162,7 +1162,7 @@ func (x *DynamicFilter) String() string {
 func (*DynamicFilter) ProtoMessage() {}
 
 func (x *DynamicFilter) ProtoReflect() protoreflect.Message {
-	mi := &file_dynamicfilter_proto_dynamic_filter_proto_msgTypes[15]
+	mi := &file_dynamic_filter_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1175,14 +1175,14 @@ func (x *DynamicFilter) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DynamicFilter.ProtoReflect.Descriptor instead.
 func (*DynamicFilter) Descriptor() ([]byte, []int) {
-	return file_dynamicfilter_proto_dynamic_filter_proto_rawDescGZIP(), []int{15}
+	return file_dynamic_filter_proto_rawDescGZIP(), []int{15}
 }
 
-func (x *DynamicFilter) GetFieldId() int32 {
+func (x *DynamicFilter) GetFieldName() string {
 	if x != nil {
-		return x.FieldId
+		return x.FieldName
 	}
-	return 0
+	return ""
 }
 
 func (x *DynamicFilter) GetFieldType() string {
@@ -1239,7 +1239,7 @@ type ValueRange struct {
 
 func (x *ValueRange) Reset() {
 	*x = ValueRange{}
-	mi := &file_dynamicfilter_proto_dynamic_filter_proto_msgTypes[16]
+	mi := &file_dynamic_filter_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1251,7 +1251,7 @@ func (x *ValueRange) String() string {
 func (*ValueRange) ProtoMessage() {}
 
 func (x *ValueRange) ProtoReflect() protoreflect.Message {
-	mi := &file_dynamicfilter_proto_dynamic_filter_proto_msgTypes[16]
+	mi := &file_dynamic_filter_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1264,7 +1264,7 @@ func (x *ValueRange) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ValueRange.ProtoReflect.Descriptor instead.
 func (*ValueRange) Descriptor() ([]byte, []int) {
-	return file_dynamicfilter_proto_dynamic_filter_proto_rawDescGZIP(), []int{16}
+	return file_dynamic_filter_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *ValueRange) GetLower() *Literal {
@@ -1319,7 +1319,7 @@ type Literal struct {
 
 func (x *Literal) Reset() {
 	*x = Literal{}
-	mi := &file_dynamicfilter_proto_dynamic_filter_proto_msgTypes[17]
+	mi := &file_dynamic_filter_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1331,7 +1331,7 @@ func (x *Literal) String() string {
 func (*Literal) ProtoMessage() {}
 
 func (x *Literal) ProtoReflect() protoreflect.Message {
-	mi := &file_dynamicfilter_proto_dynamic_filter_proto_msgTypes[17]
+	mi := &file_dynamic_filter_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1344,7 +1344,7 @@ func (x *Literal) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Literal.ProtoReflect.Descriptor instead.
 func (*Literal) Descriptor() ([]byte, []int) {
-	return file_dynamicfilter_proto_dynamic_filter_proto_rawDescGZIP(), []int{17}
+	return file_dynamic_filter_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *Literal) GetValue() isLiteral_Value {
@@ -1573,7 +1573,7 @@ type RegisterSegmentRequest struct {
 
 func (x *RegisterSegmentRequest) Reset() {
 	*x = RegisterSegmentRequest{}
-	mi := &file_dynamicfilter_proto_dynamic_filter_proto_msgTypes[18]
+	mi := &file_dynamic_filter_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1585,7 +1585,7 @@ func (x *RegisterSegmentRequest) String() string {
 func (*RegisterSegmentRequest) ProtoMessage() {}
 
 func (x *RegisterSegmentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_dynamicfilter_proto_dynamic_filter_proto_msgTypes[18]
+	mi := &file_dynamic_filter_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1598,7 +1598,7 @@ func (x *RegisterSegmentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RegisterSegmentRequest.ProtoReflect.Descriptor instead.
 func (*RegisterSegmentRequest) Descriptor() ([]byte, []int) {
-	return file_dynamicfilter_proto_dynamic_filter_proto_rawDescGZIP(), []int{18}
+	return file_dynamic_filter_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *RegisterSegmentRequest) GetQueryId() string {
@@ -1654,7 +1654,7 @@ type RegisterSegmentResponse struct {
 
 func (x *RegisterSegmentResponse) Reset() {
 	*x = RegisterSegmentResponse{}
-	mi := &file_dynamicfilter_proto_dynamic_filter_proto_msgTypes[19]
+	mi := &file_dynamic_filter_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1666,7 +1666,7 @@ func (x *RegisterSegmentResponse) String() string {
 func (*RegisterSegmentResponse) ProtoMessage() {}
 
 func (x *RegisterSegmentResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_dynamicfilter_proto_dynamic_filter_proto_msgTypes[19]
+	mi := &file_dynamic_filter_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1679,7 +1679,7 @@ func (x *RegisterSegmentResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RegisterSegmentResponse.ProtoReflect.Descriptor instead.
 func (*RegisterSegmentResponse) Descriptor() ([]byte, []int) {
-	return file_dynamicfilter_proto_dynamic_filter_proto_rawDescGZIP(), []int{19}
+	return file_dynamic_filter_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *RegisterSegmentResponse) GetSuccess() bool {
@@ -1703,11 +1703,11 @@ func (x *RegisterSegmentResponse) GetTotalRegistered() int32 {
 	return 0
 }
 
-var File_dynamicfilter_proto_dynamic_filter_proto protoreflect.FileDescriptor
+var File_dynamic_filter_proto protoreflect.FileDescriptor
 
-const file_dynamicfilter_proto_dynamic_filter_proto_rawDesc = "" +
+const file_dynamic_filter_proto_rawDesc = "" +
 	"\n" +
-	"(dynamicfilter/proto/dynamic_filter.proto\x12\rdynamicfilter\"\xcc\x01\n" +
+	"\x14dynamic_filter.proto\x12\rdynamicfilter\"\xcc\x01\n" +
 	"\x11StartQueryRequest\x12\x19\n" +
 	"\bquery_id\x18\x01 \x01(\tR\aqueryId\x12\x1d\n" +
 	"\n" +
@@ -1744,55 +1744,60 @@ const file_dynamicfilter_proto_dynamic_filter_proto_rawDesc = "" +
 	"\x0fsource_field_id\x18\x05 \x01(\x05R\rsourceFieldId\x12&\n" +
 	"\x0ftarget_field_id\x18\x06 \x01(\x05R\rtargetFieldId\x12\x1d\n" +
 	"\n" +
-	"field_type\x18\a \x01(\tR\tfieldType\"\xfb\x01\n" +
+	"field_type\x18\a \x01(\tR\tfieldType\"\xff\x01\n" +
 	"\x13CollectValueRequest\x12\x19\n" +
 	"\bquery_id\x18\x01 \x01(\tR\aqueryId\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x02 \x01(\tR\tsessionId\x12!\n" +
-	"\fsource_alias\x18\x03 \x01(\tR\vsourceAlias\x12\x19\n" +
-	"\bfield_id\x18\x04 \x01(\x05R\afieldId\x12.\n" +
+	"\fsource_alias\x18\x03 \x01(\tR\vsourceAlias\x12\x1d\n" +
+	"\n" +
+	"field_name\x18\x04 \x01(\tR\tfieldName\x12.\n" +
 	"\x06values\x18\x05 \x03(\v2\x16.dynamicfilter.LiteralR\x06values\x12\x19\n" +
 	"\bis_final\x18\x06 \x01(\bR\aisFinal\x12!\n" +
 	"\fsequence_num\x18\a \x01(\x03R\vsequenceNum\"\x89\x01\n" +
 	"\x14CollectValueResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12#\n" +
 	"\rerror_message\x18\x02 \x01(\tR\ferrorMessage\x122\n" +
-	"\x15total_values_received\x18\x03 \x01(\x03R\x13totalValuesReceived\"\x95\x01\n" +
+	"\x15total_values_received\x18\x03 \x01(\x03R\x13totalValuesReceived\"\x99\x01\n" +
 	"\x1bSignalSourceCompleteRequest\x12\x19\n" +
 	"\bquery_id\x18\x01 \x01(\tR\aqueryId\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x02 \x01(\tR\tsessionId\x12!\n" +
-	"\fsource_alias\x18\x03 \x01(\tR\vsourceAlias\x12\x19\n" +
-	"\bfield_id\x18\x04 \x01(\x05R\afieldId\"\x80\x01\n" +
+	"\fsource_alias\x18\x03 \x01(\tR\vsourceAlias\x12\x1d\n" +
+	"\n" +
+	"field_name\x18\x04 \x01(\tR\tfieldName\"\x80\x01\n" +
 	"\x1cSignalSourceCompleteResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12#\n" +
 	"\rerror_message\x18\x02 \x01(\tR\ferrorMessage\x12!\n" +
-	"\ffilter_ready\x18\x03 \x01(\bR\vfilterReady\"\x8a\x01\n" +
+	"\ffilter_ready\x18\x03 \x01(\bR\vfilterReady\"\x8e\x01\n" +
 	"\x10GetFilterRequest\x12\x19\n" +
 	"\bquery_id\x18\x01 \x01(\tR\aqueryId\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x02 \x01(\tR\tsessionId\x12!\n" +
-	"\ftarget_alias\x18\x03 \x01(\tR\vtargetAlias\x12\x19\n" +
-	"\bfield_id\x18\x04 \x01(\x05R\afieldId\"\x89\x01\n" +
+	"\ftarget_alias\x18\x03 \x01(\tR\vtargetAlias\x12\x1d\n" +
+	"\n" +
+	"field_name\x18\x04 \x01(\tR\tfieldName\"\x89\x01\n" +
 	"\x11GetFilterResponse\x12\x19\n" +
 	"\bis_ready\x18\x01 \x01(\bR\aisReady\x124\n" +
 	"\x06filter\x18\x02 \x01(\v2\x1c.dynamicfilter.DynamicFilterR\x06filter\x12#\n" +
-	"\rerror_message\x18\x03 \x01(\tR\ferrorMessage\"\xad\x01\n" +
+	"\rerror_message\x18\x03 \x01(\tR\ferrorMessage\"\xb1\x01\n" +
 	"\x14WaitForFilterRequest\x12\x19\n" +
 	"\bquery_id\x18\x01 \x01(\tR\aqueryId\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x02 \x01(\tR\tsessionId\x12!\n" +
-	"\ftarget_alias\x18\x03 \x01(\tR\vtargetAlias\x12\x19\n" +
-	"\bfield_id\x18\x04 \x01(\x05R\afieldId\x12\x1d\n" +
+	"\ftarget_alias\x18\x03 \x01(\tR\vtargetAlias\x12\x1d\n" +
+	"\n" +
+	"field_name\x18\x04 \x01(\tR\tfieldName\x12\x1d\n" +
 	"\n" +
 	"timeout_ms\x18\x05 \x01(\x03R\ttimeoutMs\"\xaa\x01\n" +
 	"\x15WaitForFilterResponse\x12\x19\n" +
 	"\bis_ready\x18\x01 \x01(\bR\aisReady\x124\n" +
 	"\x06filter\x18\x02 \x01(\v2\x1c.dynamicfilter.DynamicFilterR\x06filter\x12#\n" +
 	"\rerror_message\x18\x03 \x01(\tR\ferrorMessage\x12\x1b\n" +
-	"\ttimed_out\x18\x04 \x01(\bR\btimedOut\"\xbe\x02\n" +
-	"\rDynamicFilter\x12\x19\n" +
-	"\bfield_id\x18\x01 \x01(\x05R\afieldId\x12\x1d\n" +
+	"\ttimed_out\x18\x04 \x01(\bR\btimedOut\"\xc2\x02\n" +
+	"\rDynamicFilter\x12\x1d\n" +
+	"\n" +
+	"field_name\x18\x01 \x01(\tR\tfieldName\x12\x1d\n" +
 	"\n" +
 	"field_type\x18\x02 \x01(\tR\tfieldType\x12:\n" +
 	"\vfilter_type\x18\x03 \x01(\x0e2\x19.dynamicfilter.FilterTypeR\n" +
@@ -1868,20 +1873,20 @@ const file_dynamicfilter_proto_dynamic_filter_proto_rawDesc = "" +
 	"\x14SignalSourceComplete\x12*.dynamicfilter.SignalSourceCompleteRequest\x1a+.dynamicfilter.SignalSourceCompleteResponseB2Z0github.com/apache/iceberg-go/dynamicfilter/protob\x06proto3"
 
 var (
-	file_dynamicfilter_proto_dynamic_filter_proto_rawDescOnce sync.Once
-	file_dynamicfilter_proto_dynamic_filter_proto_rawDescData []byte
+	file_dynamic_filter_proto_rawDescOnce sync.Once
+	file_dynamic_filter_proto_rawDescData []byte
 )
 
-func file_dynamicfilter_proto_dynamic_filter_proto_rawDescGZIP() []byte {
-	file_dynamicfilter_proto_dynamic_filter_proto_rawDescOnce.Do(func() {
-		file_dynamicfilter_proto_dynamic_filter_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_dynamicfilter_proto_dynamic_filter_proto_rawDesc), len(file_dynamicfilter_proto_dynamic_filter_proto_rawDesc)))
+func file_dynamic_filter_proto_rawDescGZIP() []byte {
+	file_dynamic_filter_proto_rawDescOnce.Do(func() {
+		file_dynamic_filter_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_dynamic_filter_proto_rawDesc), len(file_dynamic_filter_proto_rawDesc)))
 	})
-	return file_dynamicfilter_proto_dynamic_filter_proto_rawDescData
+	return file_dynamic_filter_proto_rawDescData
 }
 
-var file_dynamicfilter_proto_dynamic_filter_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_dynamicfilter_proto_dynamic_filter_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
-var file_dynamicfilter_proto_dynamic_filter_proto_goTypes = []any{
+var file_dynamic_filter_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
+var file_dynamic_filter_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
+var file_dynamic_filter_proto_goTypes = []any{
 	(SessionStatus)(0),                   // 0: dynamicfilter.SessionStatus
 	(FilterType)(0),                      // 1: dynamicfilter.FilterType
 	(*StartQueryRequest)(nil),            // 2: dynamicfilter.StartQueryRequest
@@ -1905,7 +1910,7 @@ var file_dynamicfilter_proto_dynamic_filter_proto_goTypes = []any{
 	(*RegisterSegmentRequest)(nil),       // 20: dynamicfilter.RegisterSegmentRequest
 	(*RegisterSegmentResponse)(nil),      // 21: dynamicfilter.RegisterSegmentResponse
 }
-var file_dynamicfilter_proto_dynamic_filter_proto_depIdxs = []int32{
+var file_dynamic_filter_proto_depIdxs = []int32{
 	8,  // 0: dynamicfilter.StartQueryRequest.mappings:type_name -> dynamicfilter.FieldMapping
 	0,  // 1: dynamicfilter.QueryStatusResponse.status:type_name -> dynamicfilter.SessionStatus
 	19, // 2: dynamicfilter.CollectValueRequest.values:type_name -> dynamicfilter.Literal
@@ -1939,12 +1944,12 @@ var file_dynamicfilter_proto_dynamic_filter_proto_depIdxs = []int32{
 	0,  // [0:10] is the sub-list for field type_name
 }
 
-func init() { file_dynamicfilter_proto_dynamic_filter_proto_init() }
-func file_dynamicfilter_proto_dynamic_filter_proto_init() {
-	if File_dynamicfilter_proto_dynamic_filter_proto != nil {
+func init() { file_dynamic_filter_proto_init() }
+func file_dynamic_filter_proto_init() {
+	if File_dynamic_filter_proto != nil {
 		return
 	}
-	file_dynamicfilter_proto_dynamic_filter_proto_msgTypes[17].OneofWrappers = []any{
+	file_dynamic_filter_proto_msgTypes[17].OneofWrappers = []any{
 		(*Literal_BoolValue)(nil),
 		(*Literal_Int32Value)(nil),
 		(*Literal_Int64Value)(nil),
@@ -1963,18 +1968,18 @@ func file_dynamicfilter_proto_dynamic_filter_proto_init() {
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dynamicfilter_proto_dynamic_filter_proto_rawDesc), len(file_dynamicfilter_proto_dynamic_filter_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_dynamic_filter_proto_rawDesc), len(file_dynamic_filter_proto_rawDesc)),
 			NumEnums:      2,
 			NumMessages:   20,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
-		GoTypes:           file_dynamicfilter_proto_dynamic_filter_proto_goTypes,
-		DependencyIndexes: file_dynamicfilter_proto_dynamic_filter_proto_depIdxs,
-		EnumInfos:         file_dynamicfilter_proto_dynamic_filter_proto_enumTypes,
-		MessageInfos:      file_dynamicfilter_proto_dynamic_filter_proto_msgTypes,
+		GoTypes:           file_dynamic_filter_proto_goTypes,
+		DependencyIndexes: file_dynamic_filter_proto_depIdxs,
+		EnumInfos:         file_dynamic_filter_proto_enumTypes,
+		MessageInfos:      file_dynamic_filter_proto_msgTypes,
 	}.Build()
-	File_dynamicfilter_proto_dynamic_filter_proto = out.File
-	file_dynamicfilter_proto_dynamic_filter_proto_goTypes = nil
-	file_dynamicfilter_proto_dynamic_filter_proto_depIdxs = nil
+	File_dynamic_filter_proto = out.File
+	file_dynamic_filter_proto_goTypes = nil
+	file_dynamic_filter_proto_depIdxs = nil
 }

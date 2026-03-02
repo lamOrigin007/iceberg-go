@@ -42,15 +42,15 @@ type ScanValueCollector struct {
 	sourceAlias string
 	client      *client.Client
 
-	// fieldIDs - список ID полей для сбора значений
-	fieldIDs []int
+	// fieldNames - список имен полей для сбора значений
+	fieldNames []string
 	// fieldTypes - типы полей для корректной конвертации
-	fieldTypes map[int]iceberg.Type
+	fieldTypes map[string]iceberg.Type
 	// bufferSize - размер буфера перед отправкой
 	bufferSize int
 
-	// buffers хранит буферизированные значения по fieldID
-	buffers map[int][]iceberg.Literal
+	// buffers хранит буферизированные значения по fieldName
+	buffers map[string][]iceberg.Literal
 
 	// Статистика
 	valuesCollected int64
@@ -63,8 +63,8 @@ type ScanValueCollectorConfig struct {
 	QueryID     string
 	SessionID   string
 	SourceAlias string
-	FieldIDs    []int
-	FieldTypes  map[int]iceberg.Type
+	FieldNames  []string
+	FieldTypes  map[string]iceberg.Type
 	BufferSize  int
 }
 
@@ -80,10 +80,10 @@ func NewScanValueCollector(cfg ScanValueCollectorConfig, dfClient *client.Client
 		sessionID:   cfg.SessionID,
 		sourceAlias: cfg.SourceAlias,
 		client:      dfClient,
-		fieldIDs:    cfg.FieldIDs,
+		fieldNames:  cfg.FieldNames,
 		fieldTypes:  cfg.FieldTypes,
 		bufferSize:  bufferSize,
-		buffers:     make(map[int][]iceberg.Literal),
+		buffers:     make(map[string][]iceberg.Literal),
 	}
 }
 
@@ -96,26 +96,26 @@ func (c *ScanValueCollector) Collect(batch arrow.RecordBatch) error {
 	c.batchesProcessed++
 
 	// Для каждого поля извлекаем значения из батча
-	for _, fieldID := range c.fieldIDs {
-		colIndex := c.findColumnIndex(batch, fieldID)
+	for _, fieldName := range c.fieldNames {
+		colIndex := c.findColumnIndexByName(batch, fieldName)
 		if colIndex < 0 {
 			// Поле не найдено в этом батче - пропускаем
 			continue
 		}
 
 		col := batch.Column(colIndex)
-		values, err := c.extractValues(col, c.fieldTypes[fieldID])
+		values, err := c.extractValues(col, c.fieldTypes[fieldName])
 		if err != nil {
-			return fmt.Errorf("failed to extract values for field %d: %w", fieldID, err)
+			return fmt.Errorf("failed to extract values for field %s: %w", fieldName, err)
 		}
 
 		// Добавляем в буфер
-		c.buffers[fieldID] = append(c.buffers[fieldID], values...)
+		c.buffers[fieldName] = append(c.buffers[fieldName], values...)
 		c.valuesCollected += int64(len(values))
 
 		// Если буфер заполнен - отправляем
-		if len(c.buffers[fieldID]) >= c.bufferSize {
-			if err := c.flushFieldUnsafe(fieldID); err != nil {
+		if len(c.buffers[fieldName]) >= c.bufferSize {
+			if err := c.flushFieldUnsafe(fieldName); err != nil {
 				return err
 			}
 		}
@@ -131,32 +131,28 @@ func (c *ScanValueCollector) Finalize() error {
 	defer c.mu.Unlock()
 
 	// Отправляем все оставшиеся значения
-	for fieldID := range c.buffers {
-		if len(c.buffers[fieldID]) > 0 {
-			if err := c.flushFieldUnsafe(fieldID); err != nil {
+	for fieldName := range c.buffers {
+		if len(c.buffers[fieldName]) > 0 {
+			if err := c.flushFieldUnsafe(fieldName); err != nil {
 				return err
 			}
 		}
 
 		// Сигнализируем о завершении сбора для этого поля
-		if err := c.client.SignalSourceComplete(context.Background(), c.sourceAlias, fieldID); err != nil {
-			return fmt.Errorf("failed to signal complete for field %d: %w", fieldID, err)
+		if err := c.client.SignalSourceComplete(context.Background(), c.sourceAlias, fieldName); err != nil {
+			return fmt.Errorf("failed to signal complete for field %s: %w", fieldName, err)
 		}
 	}
 
 	return nil
 }
 
-// findColumnIndex находит индекс колонки в RecordBatch по field ID
-func (c *ScanValueCollector) findColumnIndex(batch arrow.RecordBatch, fieldID int) int {
+// findColumnIndexByName находит индекс колонки в RecordBatch по имени поля
+func (c *ScanValueCollector) findColumnIndexByName(batch arrow.RecordBatch, fieldName string) int {
 	schema := batch.Schema()
 	for i, field := range schema.Fields() {
-		idStr, ok := field.Metadata.GetValue("iceberg.field.id")
-		if ok {
-			var id int
-			if _, err := fmt.Sscanf(idStr, "%d", &id); err == nil && id == fieldID {
-				return i
-			}
+		if field.Name == fieldName {
+			return i
 		}
 	}
 	return -1
@@ -255,19 +251,19 @@ func (c *ScanValueCollector) extractValues(col arrow.Array, fieldType iceberg.Ty
 }
 
 // flushFieldUnsafe отправляет буферизированные значения для поля (должен быть захвачен lock)
-func (c *ScanValueCollector) flushFieldUnsafe(fieldID int) error {
-	values := c.buffers[fieldID]
+func (c *ScanValueCollector) flushFieldUnsafe(fieldName string) error {
+	values := c.buffers[fieldName]
 	if len(values) == 0 {
 		return nil
 	}
 
 	// Отправляем значения
-	if err := c.client.SendValues(context.Background(), c.sourceAlias, fieldID, values, c.fieldTypes[fieldID]); err != nil {
-		return fmt.Errorf("failed to send values for field %d: %w", fieldID, err)
+	if err := c.client.SendValues(context.Background(), c.sourceAlias, fieldName, values, c.fieldTypes[fieldName]); err != nil {
+		return fmt.Errorf("failed to send values for field %s: %w", fieldName, err)
 	}
 
 	c.valuesSent += int64(len(values))
-	c.buffers[fieldID] = c.buffers[fieldID][:0]
+	c.buffers[fieldName] = c.buffers[fieldName][:0]
 
 	return nil
 }
@@ -280,12 +276,12 @@ func (c *ScanValueCollector) Stats() (collected, sent, batches int64) {
 }
 
 // FlushValues принудительно отправляет все буферизированные значения для поля
-func (c *ScanValueCollector) FlushValues(fieldID int) error {
+func (c *ScanValueCollector) FlushValues(fieldName string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	if len(c.buffers[fieldID]) > 0 {
-		return c.flushFieldUnsafe(fieldID)
+	if len(c.buffers[fieldName]) > 0 {
+		return c.flushFieldUnsafe(fieldName)
 	}
 	return nil
 }

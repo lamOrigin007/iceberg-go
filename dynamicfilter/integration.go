@@ -36,12 +36,12 @@ type SourceValueCollector struct {
 	sessionID   string
 	sourceAlias string
 	client      *client.Client
-	fieldIDs    []int
-	fieldTypes  map[int]iceberg.Type
+	fieldNames  []string
+	fieldTypes  map[string]iceberg.Type
 	bufferSize  int
 
 	// Буферы значений по полям
-	buffers map[int][]iceberg.Literal
+	buffers map[string][]iceberg.Literal
 
 	// Статистика
 	valuesCollected int64
@@ -52,8 +52,8 @@ type SourceValueCollector struct {
 func NewSourceValueCollector(
 	queryID, sessionID, sourceAlias string,
 	dfClient *client.Client,
-	fieldIDs []int,
-	fieldTypes map[int]iceberg.Type,
+	fieldNames []string,
+	fieldTypes map[string]iceberg.Type,
 	bufferSize int,
 ) *SourceValueCollector {
 	return &SourceValueCollector{
@@ -61,10 +61,10 @@ func NewSourceValueCollector(
 		sessionID:   sessionID,
 		sourceAlias: sourceAlias,
 		client:      dfClient,
-		fieldIDs:    fieldIDs,
+		fieldNames:  fieldNames,
 		fieldTypes:  fieldTypes,
 		bufferSize:  bufferSize,
-		buffers:     make(map[int][]iceberg.Literal),
+		buffers:     make(map[string][]iceberg.Literal),
 	}
 }
 
@@ -73,26 +73,26 @@ func (s *SourceValueCollector) CollectFromBatch(batch arrow.RecordBatch) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	for _, fieldID := range s.fieldIDs {
-		// Поиск индекса колонки по field ID
-		colIndex := s.findColumnIndex(batch, fieldID)
+	for _, fieldName := range s.fieldNames {
+		// Поиск индекса колонки по имени поля
+		colIndex := s.findColumnIndexByName(batch, fieldName)
 		if colIndex < 0 {
 			continue // поле не найдено в этом батче
 		}
 
 		col := batch.Column(colIndex)
-		values, err := s.extractValues(col, s.fieldTypes[fieldID])
+		values, err := s.extractValues(col, s.fieldTypes[fieldName])
 		if err != nil {
-			return fmt.Errorf("failed to extract values for field %d: %w", fieldID, err)
+			return fmt.Errorf("failed to extract values for field %s: %w", fieldName, err)
 		}
 
 		// Добавление в буфер
-		s.buffers[fieldID] = append(s.buffers[fieldID], values...)
+		s.buffers[fieldName] = append(s.buffers[fieldName], values...)
 		s.valuesCollected += int64(len(values))
 
 		// Отправка если буфер заполнен
-		if len(s.buffers[fieldID]) >= s.bufferSize {
-			if err := s.flushFieldUnsafe(fieldID); err != nil {
+		if len(s.buffers[fieldName]) >= s.bufferSize {
+			if err := s.flushFieldUnsafe(fieldName); err != nil {
 				return err
 			}
 		}
@@ -101,16 +101,12 @@ func (s *SourceValueCollector) CollectFromBatch(batch arrow.RecordBatch) error {
 	return nil
 }
 
-// findColumnIndex находит индекс колонки по field ID
-func (s *SourceValueCollector) findColumnIndex(batch arrow.RecordBatch, fieldID int) int {
+// findColumnIndexByName находит индекс колонки по имени поля
+func (s *SourceValueCollector) findColumnIndexByName(batch arrow.RecordBatch, fieldName string) int {
 	schema := batch.Schema()
 	for i, field := range schema.Fields() {
-		idStr, ok := field.Metadata.GetValue("iceberg.field.id")
-		if ok {
-			var id int
-			if _, err := fmt.Sscanf(idStr, "%d", &id); err == nil && id == fieldID {
-				return i
-			}
+		if field.Name == fieldName {
+			return i
 		}
 	}
 	return -1
@@ -215,9 +211,9 @@ func (s *SourceValueCollector) FlushValues(ctx context.Context) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	for fieldID := range s.buffers {
-		if len(s.buffers[fieldID]) > 0 {
-			if err := s.flushFieldUnsafe(fieldID); err != nil {
+	for fieldName := range s.buffers {
+		if len(s.buffers[fieldName]) > 0 {
+			if err := s.flushFieldUnsafe(fieldName); err != nil {
 				return err
 			}
 		}
@@ -226,19 +222,19 @@ func (s *SourceValueCollector) FlushValues(ctx context.Context) error {
 	return nil
 }
 
-func (s *SourceValueCollector) flushFieldUnsafe(fieldID int) error {
-	values := s.buffers[fieldID]
+func (s *SourceValueCollector) flushFieldUnsafe(fieldName string) error {
+	values := s.buffers[fieldName]
 	if len(values) == 0 {
 		return nil
 	}
 
 	// Отправка значений
-	if err := s.client.SendValues(context.Background(), s.sourceAlias, fieldID, values, s.fieldTypes[fieldID]); err != nil {
-		return fmt.Errorf("failed to send values for field %d: %w", fieldID, err)
+	if err := s.client.SendValues(context.Background(), s.sourceAlias, fieldName, values, s.fieldTypes[fieldName]); err != nil {
+		return fmt.Errorf("failed to send values for field %s: %w", fieldName, err)
 	}
 
 	s.valuesSent += int64(len(values))
-	s.buffers[fieldID] = s.buffers[fieldID][:0]
+	s.buffers[fieldName] = s.buffers[fieldName][:0]
 
 	return nil
 }
@@ -251,9 +247,9 @@ func (s *SourceValueCollector) SignalComplete(ctx context.Context) error {
 	}
 
 	// Сигнал для каждого поля
-	for _, fieldID := range s.fieldIDs {
-		if err := s.client.SignalSourceComplete(ctx, s.sourceAlias, fieldID); err != nil {
-			return fmt.Errorf("failed to signal complete for field %d: %w", fieldID, err)
+	for _, fieldName := range s.fieldNames {
+		if err := s.client.SignalSourceComplete(ctx, s.sourceAlias, fieldName); err != nil {
+			return fmt.Errorf("failed to signal complete for field %s: %w", fieldName, err)
 		}
 	}
 
@@ -274,20 +270,20 @@ type TargetFilterApplier struct {
 	sessionID   string
 	targetAlias string
 	client      *client.Client
-	fieldIDs    []int
-	fieldTypes  map[int]iceberg.Type
+	fieldNames  []string
+	fieldTypes  map[string]iceberg.Type
 	timeout     int // секунды
 
 	// Примененные фильтры
-	appliedFilters map[int]*types.DynamicFilter
+	appliedFilters map[string]*types.DynamicFilter
 }
 
 // NewTargetFilterApplier создает новый аппликатор фильтров
 func NewTargetFilterApplier(
 	queryID, sessionID, targetAlias string,
 	dfClient *client.Client,
-	fieldIDs []int,
-	fieldTypes map[int]iceberg.Type,
+	fieldNames []string,
+	fieldTypes map[string]iceberg.Type,
 	timeoutSec int,
 ) *TargetFilterApplier {
 	return &TargetFilterApplier{
@@ -295,34 +291,34 @@ func NewTargetFilterApplier(
 		sessionID:      sessionID,
 		targetAlias:    targetAlias,
 		client:         dfClient,
-		fieldIDs:       fieldIDs,
+		fieldNames:     fieldNames,
 		fieldTypes:     fieldTypes,
 		timeout:        timeoutSec,
-		appliedFilters: make(map[int]*types.DynamicFilter),
+		appliedFilters: make(map[string]*types.DynamicFilter),
 	}
 }
 
 // WaitForFilters ожидает готовности фильтров для всех полей
 func (t *TargetFilterApplier) WaitForFilters(ctx context.Context) error {
-	for _, fieldID := range t.fieldIDs {
-		filter, err := t.WaitForFilter(ctx, fieldID)
+	for _, fieldName := range t.fieldNames {
+		filter, err := t.WaitForFilter(ctx, fieldName)
 		if err != nil {
-			return fmt.Errorf("failed to wait for filter for field %d: %w", fieldID, err)
+			return fmt.Errorf("failed to wait for filter for field %s: %w", fieldName, err)
 		}
 		if filter != nil {
-			t.appliedFilters[fieldID] = filter
+			t.appliedFilters[fieldName] = filter
 		}
 	}
 	return nil
 }
 
 // WaitForFilter ожидает готовности фильтра для конкретного поля
-func (t *TargetFilterApplier) WaitForFilter(ctx context.Context, fieldID int) (*types.DynamicFilter, error) {
+func (t *TargetFilterApplier) WaitForFilter(ctx context.Context, fieldName string) (*types.DynamicFilter, error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
 	// Проверка кэша
-	if filter, ok := t.appliedFilters[fieldID]; ok {
+	if filter, ok := t.appliedFilters[fieldName]; ok {
 		return filter, nil
 	}
 
@@ -332,24 +328,24 @@ func (t *TargetFilterApplier) WaitForFilter(ctx context.Context, fieldID int) (*
 		timeout = int(types.DefaultWaitTimeout.Seconds())
 	}
 
-	filter, err := t.client.WaitForFilter(ctx, t.targetAlias, fieldID, 0)
+	filter, err := t.client.WaitForFilter(ctx, t.targetAlias, fieldName, 0)
 	if err != nil {
 		return nil, err
 	}
 
 	if filter != nil {
-		t.appliedFilters[fieldID] = filter
+		t.appliedFilters[fieldName] = filter
 	}
 
 	return filter, nil
 }
 
 // BuildFilterExpression строит BooleanExpression для поля
-func (t *TargetFilterApplier) BuildFilterExpression(fieldID int, fieldRef iceberg.UnboundTerm) (iceberg.BooleanExpression, error) {
+func (t *TargetFilterApplier) BuildFilterExpression(fieldName string, fieldRef iceberg.UnboundTerm) (iceberg.BooleanExpression, error) {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
-	filter, ok := t.appliedFilters[fieldID]
+	filter, ok := t.appliedFilters[fieldName]
 	if !ok || filter == nil {
 		return iceberg.AlwaysTrue{}, nil
 	}
@@ -359,19 +355,19 @@ func (t *TargetFilterApplier) BuildFilterExpression(fieldID int, fieldRef iceber
 
 // BuildCombinedFilterExpression строит комбинированный фильтр для всех полей
 func (t *TargetFilterApplier) BuildCombinedFilterExpression(
-	fieldRefs map[int]iceberg.UnboundTerm,
+	fieldRefs map[string]iceberg.UnboundTerm,
 ) (iceberg.BooleanExpression, error) {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
 	var predicates []iceberg.BooleanExpression
 
-	for fieldID, filter := range t.appliedFilters {
+	for fieldName, filter := range t.appliedFilters {
 		if filter == nil {
 			continue
 		}
 
-		fieldRef, ok := fieldRefs[fieldID]
+		fieldRef, ok := fieldRefs[fieldName]
 		if !ok {
 			continue
 		}
@@ -400,11 +396,11 @@ func (t *TargetFilterApplier) BuildCombinedFilterExpression(
 }
 
 // GetAppliedFilters возвращает примененные фильтры
-func (t *TargetFilterApplier) GetAppliedFilters() map[int]*types.DynamicFilter {
+func (t *TargetFilterApplier) GetAppliedFilters() map[string]*types.DynamicFilter {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 
-	result := make(map[int]*types.DynamicFilter, len(t.appliedFilters))
+	result := make(map[string]*types.DynamicFilter, len(t.appliedFilters))
 	for k, v := range t.appliedFilters {
 		result[k] = v
 	}

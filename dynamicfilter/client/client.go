@@ -52,7 +52,7 @@ type Client struct {
 
 type fieldKey struct {
 	sourceAlias string
-	fieldID     int
+	fieldName   string
 }
 
 type valueBuffer struct {
@@ -307,7 +307,7 @@ func (c *Client) RegisterSegment(ctx context.Context, queryID, sessionID string,
 }
 
 // SendValues отправляет значения для source поля
-func (c *Client) SendValues(ctx context.Context, sourceAlias string, fieldID int,
+func (c *Client) SendValues(ctx context.Context, sourceAlias, fieldName string,
 	values []iceberg.Literal, fieldType iceberg.Type) error {
 
 	c.mu.RLock()
@@ -319,7 +319,7 @@ func (c *Client) SendValues(ctx context.Context, sourceAlias string, fieldID int
 		return fmt.Errorf("no active session")
 	}
 
-	key := fieldKey{sourceAlias: sourceAlias, fieldID: fieldID}
+	key := fieldKey{sourceAlias: sourceAlias, fieldName: fieldName}
 
 	// Получение или создание буфера
 	c.mu.Lock()
@@ -350,13 +350,13 @@ func (c *Client) SendValues(ctx context.Context, sourceAlias string, fieldID int
 }
 
 // FlushValues принудительно отправляет все буферизированные значения
-func (c *Client) FlushValues(ctx context.Context, sourceAlias string, fieldID int) error {
+func (c *Client) FlushValues(ctx context.Context, sourceAlias, fieldName string) error {
 	c.mu.RLock()
 	queryID := c.queryID
 	sessionID := c.sessionID
 	c.mu.RUnlock()
 
-	key := fieldKey{sourceAlias: sourceAlias, fieldID: fieldID}
+	key := fieldKey{sourceAlias: sourceAlias, fieldName: fieldName}
 
 	c.mu.Lock()
 	buf, ok := c.valueBuffers[key]
@@ -403,7 +403,7 @@ func (c *Client) flushBuffer(ctx context.Context, queryID, sessionID string,
 			QueryId:     queryID,
 			SessionId:   sessionID,
 			SourceAlias: key.sourceAlias,
-			FieldId:     int32(key.fieldID),
+			FieldName:   key.fieldName,
 			Values:      pbValues,
 			IsFinal:     false,
 		}
@@ -435,7 +435,7 @@ func (c *Client) flushBuffer(ctx context.Context, queryID, sessionID string,
 }
 
 // SignalSourceComplete сигнализирует о завершении сбора значений для source поля
-func (c *Client) SignalSourceComplete(ctx context.Context, sourceAlias string, fieldID int) error {
+func (c *Client) SignalSourceComplete(ctx context.Context, sourceAlias, fieldName string) error {
 	c.mu.RLock()
 	queryID := c.queryID
 	sessionID := c.sessionID
@@ -446,7 +446,7 @@ func (c *Client) SignalSourceComplete(ctx context.Context, sourceAlias string, f
 	}
 
 	// Сначала отправляем оставшиеся значения
-	if err := c.FlushValues(ctx, sourceAlias, fieldID); err != nil {
+	if err := c.FlushValues(ctx, sourceAlias, fieldName); err != nil {
 		return err
 	}
 
@@ -454,7 +454,7 @@ func (c *Client) SignalSourceComplete(ctx context.Context, sourceAlias string, f
 		QueryId:     queryID,
 		SessionId:   sessionID,
 		SourceAlias: sourceAlias,
-		FieldId:     int32(fieldID),
+		FieldName:   fieldName,
 	}
 
 	resp, err := c.client.SignalSourceComplete(ctx, req)
@@ -470,7 +470,7 @@ func (c *Client) SignalSourceComplete(ctx context.Context, sourceAlias string, f
 }
 
 // GetFilter получает фильтр для target поля (не блокируется)
-func (c *Client) GetFilter(ctx context.Context, targetAlias string, fieldID int) (*types.DynamicFilter, error) {
+func (c *Client) GetFilter(ctx context.Context, targetAlias, fieldName string) (*types.DynamicFilter, error) {
 	c.mu.RLock()
 	queryID := c.queryID
 	sessionID := c.sessionID
@@ -484,7 +484,7 @@ func (c *Client) GetFilter(ctx context.Context, targetAlias string, fieldID int)
 		QueryId:     queryID,
 		SessionId:   sessionID,
 		TargetAlias: targetAlias,
-		FieldId:     int32(fieldID),
+		FieldName:   fieldName,
 	}
 
 	resp, err := c.client.GetFilter(ctx, req)
@@ -500,7 +500,7 @@ func (c *Client) GetFilter(ctx context.Context, targetAlias string, fieldID int)
 }
 
 // WaitForFilter ожидает готовности фильтра для target поля (блокируется)
-func (c *Client) WaitForFilter(ctx context.Context, targetAlias string, fieldID int,
+func (c *Client) WaitForFilter(ctx context.Context, targetAlias, fieldName string,
 	timeout time.Duration) (*types.DynamicFilter, error) {
 
 	c.mu.RLock()
@@ -520,7 +520,7 @@ func (c *Client) WaitForFilter(ctx context.Context, targetAlias string, fieldID 
 		QueryId:     queryID,
 		SessionId:   sessionID,
 		TargetAlias: targetAlias,
-		FieldId:     int32(fieldID),
+		FieldName:   fieldName,
 		TimeoutMs:   int64(timeout.Milliseconds()),
 	}
 
@@ -611,7 +611,7 @@ func protoFilterToTypes(f *pb.DynamicFilter) (*types.DynamicFilter, error) {
 	}
 
 	result := &types.DynamicFilter{
-		FieldID:          int(f.FieldId),
+		FieldName:        f.FieldName,
 		FieldType:        fieldType,
 		FilterType:       types.FilterType(f.FilterType),
 		TotalValues:      f.TotalValues,
