@@ -395,7 +395,7 @@ func BuildFilter(values []iceberg.Literal, fieldType iceberg.Type, inLimit, maxR
 	}
 
 	// Иначе строим диапазоны
-	ranges := buildRanges(uniqueValues, fieldType, maxRanges)
+	ranges := buildRanges(uniqueValues, maxRanges)
 	return &DynamicFilter{
 		FieldType:        fieldType,
 		FilterType:       FilterTypeBETWEEN,
@@ -430,7 +430,7 @@ func literalKey(l iceberg.Literal) string {
 }
 
 // buildRanges строит диапазоны из отсортированных значений
-func buildRanges(values []iceberg.Literal, fieldType iceberg.Type, maxRanges int) []ValueRange {
+func buildRanges(values []iceberg.Literal, maxRanges int) []ValueRange {
 	if len(values) == 0 {
 		return nil
 	}
@@ -438,10 +438,10 @@ func buildRanges(values []iceberg.Literal, fieldType iceberg.Type, maxRanges int
 	// Сортировка значений
 	sorted := make([]iceberg.Literal, len(values))
 	copy(sorted, values)
-	sortLiterals(sorted, fieldType)
+	sortLiterals(sorted)
 
 	// Группировка в кластеры
-	clusters := findClusters(sorted, fieldType)
+	clusters := findClusters(sorted)
 
 	// Ограничение количества диапазонов
 	if len(clusters) > maxRanges {
@@ -466,8 +466,8 @@ func buildRanges(values []iceberg.Literal, fieldType iceberg.Type, maxRanges int
 	return ranges
 }
 
-// sortLiterals сортирует литералы согласно типу
-func sortLiterals(literals []iceberg.Literal, typ iceberg.Type) {
+// sortLiterals сортирует литералы
+func sortLiterals(literals []iceberg.Literal) {
 	sort.Slice(literals, func(i, j int) bool {
 		return compareLiterals(literals[i], literals[j]) < 0
 	})
@@ -541,7 +541,7 @@ func compareLiterals(a, b iceberg.Literal) int {
 }
 
 // findClusters группирует отсортированные значения в кластеры на основе "разрывов"
-func findClusters(values []iceberg.Literal, fieldType iceberg.Type) [][]iceberg.Literal {
+func findClusters(values []iceberg.Literal) [][]iceberg.Literal {
 	if len(values) == 0 {
 		return nil
 	}
@@ -554,7 +554,7 @@ func findClusters(values []iceberg.Literal, fieldType iceberg.Type) [][]iceberg.
 		curr := values[i]
 
 		// Если разрыв между значениями большой, начинаем новый кластер
-		if isGap(prev, curr, fieldType) {
+		if isGap(prev, curr) {
 			clusters = append(clusters, currentCluster)
 			currentCluster = []iceberg.Literal{curr}
 		} else {
@@ -570,7 +570,7 @@ func findClusters(values []iceberg.Literal, fieldType iceberg.Type) [][]iceberg.
 }
 
 // isGap определяет, есть ли "разрыв" между двумя значениями
-func isGap(a, b iceberg.Literal, fieldType iceberg.Type) bool {
+func isGap(a, b iceberg.Literal) bool {
 	av := a.Any()
 	bv := b.Any()
 
