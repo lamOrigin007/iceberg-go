@@ -469,12 +469,12 @@ func buildRanges(values []iceberg.Literal, fieldType iceberg.Type, maxRanges int
 // sortLiterals сортирует литералы согласно типу
 func sortLiterals(literals []iceberg.Literal, typ iceberg.Type) {
 	sort.Slice(literals, func(i, j int) bool {
-		return compareLiterals(literals[i], literals[j], typ) < 0
+		return compareLiterals(literals[i], literals[j]) < 0
 	})
 }
 
 // compareLiterals сравнивает два литерала
-func compareLiterals(a, b iceberg.Literal, typ iceberg.Type) int {
+func compareLiterals(a, b iceberg.Literal) int {
 	if a == nil && b == nil {
 		return 0
 	}
